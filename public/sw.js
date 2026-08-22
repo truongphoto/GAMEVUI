@@ -1,4 +1,4 @@
-const CACHE_NAME = "gpp-relax-v5";
+const CACHE_NAME = "gpp-relax-v6";
 const BASE = new URL("./", self.registration.scope);
 const CORE_FILES = [
   "./",
