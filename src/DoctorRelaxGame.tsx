@@ -12,8 +12,10 @@ type FallingItem = {
 };
 type Particle = { x: number; y: number; vx: number; vy: number; life: number; size: number; color: string };
 
-const WIDTH = 960;
-const HEIGHT = 620;
+const DESKTOP_WIDTH = 960;
+const DESKTOP_HEIGHT = 520;
+const MOBILE_WIDTH = 620;
+const MOBILE_HEIGHT = 820;
 const ROUND_SECONDS = 60;
 const ASSET_BASE = import.meta.env.BASE_URL;
 const ZONES = ["Khu Cấp cứu", "Bệnh viện Nhi", "Trung tâm Phẫu thuật", "Khu Điều trị Nội trú", "Khu Nghiên cứu & Giáo dục", "Toàn cảnh bệnh viện"];
@@ -81,6 +83,9 @@ export default function DoctorRelaxGame() {
     let best = Number(localStorage.getItem("gpp-relax-best") || 0);
     let message = "Chạm Bắt đầu để thư giãn";
     let messageUntil = 0;
+    const mobileLayout = window.matchMedia("(max-width: 720px)").matches;
+    const WIDTH = mobileLayout ? MOBILE_WIDTH : DESKTOP_WIDTH;
+    const HEIGHT = mobileLayout ? MOBILE_HEIGHT : DESKTOP_HEIGHT;
 
     const mapImages = HOSPITAL_TIERS.map((hospitalTier) => {
       const image = new Image();
@@ -276,25 +281,36 @@ export default function DoctorRelaxGame() {
         const scale = isFinalScene
           ? 1 - (1 - Math.cos(movement)) * 0.012
           : camera.scale * (1 - (1 - Math.cos(movement)) * 0.02);
-        const sw = mapImage.naturalWidth * scale;
-        const sh = mapImage.naturalHeight * scale;
+        let sw = mapImage.naturalWidth * scale;
+        let sh = sw / (WIDTH / HEIGHT);
+        if (sh > mapImage.naturalHeight) {
+          sh = mapImage.naturalHeight;
+          sw = sh * (WIDTH / HEIGHT);
+        }
         const panX = Math.sin(movement) * (isFinalScene ? 0.004 : 0.012);
         const panY = Math.sin(movement * 0.72) * (isFinalScene ? 0.003 : 0.008);
         const focusX = mapImage.naturalWidth * (camera.x + panX);
         const focusY = mapImage.naturalHeight * (camera.y + panY);
         const sx = clamp(focusX - sw / 2, 0, mapImage.naturalWidth - sw);
         const sy = clamp(focusY - sh / 2, 0, mapImage.naturalHeight - sh);
-        // Mỗi góc ảnh đều được kéo phủ kín toàn màn chơi, không thu thành ảnh nhỏ.
-        ctx.drawImage(mapImage, sx, sy, sw, sh, 0, 0, WIDTH, HEIGHT);
+        // Điện thoại dùng khung dọc và cắt đúng tỉ lệ; máy tính giữ khung ngang.
+        if (isFinalScene && mobileLayout) {
+          const fitHeight = WIDTH / (mapImage.naturalWidth / mapImage.naturalHeight);
+          const fitY = (HEIGHT - fitHeight) / 2;
+          ctx.drawImage(mapImage, 0, 0, mapImage.naturalWidth, mapImage.naturalHeight, 0, fitY, WIDTH, fitHeight);
+        } else {
+          ctx.drawImage(mapImage, sx, sy, sw, sh, 0, 0, WIDTH, HEIGHT);
+        }
         ctx.fillStyle = "rgba(241,250,251,.4)";
         ctx.fillRect(0, 0, WIDTH, HEIGHT);
       }
       const glow = ctx.createRadialGradient(WIDTH / 2, HEIGHT / 2, 30, WIDTH / 2, HEIGHT / 2, 520);
       glow.addColorStop(0, "rgba(255,255,255,.08)"); glow.addColorStop(1, "rgba(8,92,122,.15)");
       ctx.fillStyle = glow; ctx.fillRect(0, 0, WIDTH, HEIGHT);
-      roundedRect(24, 22, 390, 46, 22); ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.fill();
-      ctx.fillStyle = "#075a78"; ctx.font = "700 17px Arial, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-      ctx.fillText(`${HOSPITAL_TIERS[tier].short} · Màn ${zone + 1}/${ZONES.length} · ${ZONES[zone]}`, 43, 45);
+      const labelWidth = mobileLayout ? WIDTH - 32 : 390;
+      roundedRect(mobileLayout ? 16 : 24, mobileLayout ? 15 : 22, labelWidth, mobileLayout ? 42 : 46, 22); ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.fill();
+      ctx.fillStyle = "#075a78"; ctx.font = `700 ${mobileLayout ? 15 : 17}px Arial, sans-serif`; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      ctx.fillText(`${HOSPITAL_TIERS[tier].short} · Màn ${zone + 1}/${ZONES.length} · ${ZONES[zone]}`, mobileLayout ? 32 : 43, mobileLayout ? 36 : 45, labelWidth - 28);
     }
     function drawPill(item: FallingItem) {
       ctx.save(); ctx.translate(item.x, item.y); ctx.rotate(item.rotation);
