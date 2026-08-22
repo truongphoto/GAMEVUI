@@ -7,7 +7,7 @@ type Hud = { phase: Phase; score: number; dropBudget: number; time: number; bonu
 type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
 type FallingItem = {
   id: number;
-  kind: "pill" | "logo" | "coffee" | "heart" | "ambulance" | "magnet" | "spaceship" | "rainbowLogo" | "badPill" | "virus" | "meteor" | "blackhole";
+  kind: "pill" | "logo" | "coffee" | "heart" | "specialHeart" | "ambulance" | "magnet" | "spaceship" | "rainbowLogo" | "badPill" | "virus" | "meteor" | "blackhole";
   x: number; y: number; r: number; speed: number; drift: number;
   points: number; color: string; shape: number; rotation: number; spin: number;
   hits?: number;
@@ -46,12 +46,12 @@ const CAMERAS = [
   { x: 0.5, y: 0.5, scale: 1 },      // Toàn cảnh bệnh viện
 ];
 const SCENE_BALANCE = [
-  { min: 650, max: 750, target: 700, speed: .85, spawn: [.80, .88] as const, maxItems: 15, dropCount: 66 },
-  { min: 780, max: 900, target: 840, speed: .95, spawn: [.72, .80] as const, maxItems: 16, dropCount: 73 },
-  { min: 920, max: 1050, target: 985, speed: 1.05, spawn: [.65, .73] as const, maxItems: 17, dropCount: 80 },
-  { min: 1070, max: 1200, target: 1135, speed: 1.15, spawn: [.60, .67] as const, maxItems: 18, dropCount: 86 },
-  { min: 1200, max: 1350, target: 1275, speed: 1.25, spawn: [.56, .62] as const, maxItems: 20, dropCount: 92 },
-  { min: 1300, max: 1500, target: 1400, speed: 1.35, spawn: [.52, .58] as const, maxItems: 22, dropCount: 98 },
+  { min: 650, max: 750, target: 700, speed: .85, spawn: [.58, .68] as const, maxItems: 18, dropCount: 96 },
+  { min: 780, max: 900, target: 840, speed: .95, spawn: [.50, .60] as const, maxItems: 20, dropCount: 112 },
+  { min: 920, max: 1050, target: 985, speed: 1.05, spawn: [.44, .54] as const, maxItems: 22, dropCount: 128 },
+  { min: 1070, max: 1200, target: 1135, speed: 1.15, spawn: [.39, .48] as const, maxItems: 24, dropCount: 144 },
+  { min: 1200, max: 1350, target: 1275, speed: 1.25, spawn: [.34, .43] as const, maxItems: 26, dropCount: 160 },
+  { min: 1300, max: 1500, target: 1400, speed: 1.35, spawn: [.30, .39] as const, maxItems: 28, dropCount: 176 },
 ];
 // Mỗi cấp có một đường máy quay riêng: xuất phát quanh TRƯỜNG GPP, lướt qua các khu rồi lùi ra toàn cảnh.
 const MOBILE_CINEMATIC_PATHS = [
@@ -65,19 +65,31 @@ const MUSIC_NOTES = [523.25, 659.25, 783.99, 659.25, 698.46, 880, 783.99, 659.25
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 const random = (min: number, max: number) => Math.random() * (max - min) + min;
 
-function buildPillPointPlan(total: number, count: number) {
-  const weights = Array.from({ length: count }, (_, index) => {
-    const progress = index / Math.max(1, count - 1);
-    const finalBoost = progress >= .84 ? 1.22 : progress >= .68 ? 1.08 : 1;
-    return (.84 + progress * .32) * finalBoost * random(.93, 1.07);
-  });
-  const weightTotal = weights.reduce((sum, weight) => sum + weight, 0);
-  const exact = weights.map((weight) => total * weight / weightTotal);
-  const points = exact.map((value) => Math.max(1, Math.floor(value)));
+function buildCappedSegment(total: number, count: number) {
+  const base = Math.floor(total / count);
+  const points = Array(count).fill(clamp(base, 1, 10)) as number[];
   let remainder = total - points.reduce((sum, value) => sum + value, 0);
-  const priority = exact.map((value, index) => ({ index, fraction: value - Math.floor(value) })).sort((a, b) => b.fraction - a.fraction);
-  for (let index = 0; remainder > 0; index++, remainder--) points[priority[index % priority.length].index] += 1;
+  const order = Array.from({ length: count }, (_, index) => index).sort(() => Math.random() - .5);
+  for (let cursor = 0; remainder > 0; cursor = (cursor + 1) % count) {
+    const index = order[cursor];
+    if (points[index] < 10) { points[index] += 1; remainder -= 1; }
+  }
+  for (let attempt = 0; attempt < count * 3; attempt++) {
+    const from = Math.floor(random(0, count));
+    const to = Math.floor(random(0, count));
+    if (points[from] > 1 && points[to] < 10) { points[from] -= 1; points[to] += 1; }
+  }
   return points;
+}
+
+function buildPillPointPlan(total: number, count: number) {
+  const lateCount = Math.round(count * .2);
+  const earlyCount = count - lateCount;
+  const lateTotal = Math.round(total * .2);
+  return {
+    early: buildCappedSegment(total - lateTotal, earlyCount),
+    late: buildCappedSegment(lateTotal, lateCount),
+  };
 }
 
 function getResult(score: number) {
@@ -159,7 +171,9 @@ export default function DoctorRelaxGame() {
     let phase: Phase = "idle";
     let score = 0;
     let dropBudget = SCENE_BALANCE[0].target;
-    let pillPointPlan: number[] = [];
+    let earlyPillPlan: number[] = [];
+    let latePillPlan: number[] = [];
+    let heartSchedule: Array<{ at: number; kind: "heart" | "specialHeart"; warned: boolean; spawned: boolean }> = [];
     let timeLeft = ROUND_SECONDS;
     let baseTimeLeft = ROUND_SECONDS;
     let bonusTimeBank = 0;
@@ -285,19 +299,21 @@ export default function DoctorRelaxGame() {
       gameCanvas.height = HEIGHT * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
-    function spawn(kind: FallingItem["kind"] = "pill") {
+    function spawn(kind: FallingItem["kind"] = "pill", forcedPoints?: number) {
       const isLogo = kind === "logo" || kind === "rainbowLogo";
       const isPill = kind === "pill" || kind === "badPill";
-      const r = isLogo ? 50 : kind === "blackhole" ? 43 : kind === "meteor" ? 36 : isPill ? random(25, 31) : 31;
+      const r = isLogo ? 50 : kind === "blackhole" ? 43 : kind === "meteor" ? 36 : kind === "specialHeart" ? 35 : isPill ? random(25, 31) : 31;
       const bonusPoints = () => Math.ceil(random(4 + zone, 8 + zone * 1.6));
-      const points = kind === "pill" ? (pillPointPlan.length > 0 ? pillPointPlan.shift()! : bonusPhase ? bonusPoints() : 1) : 0;
+      const points = kind === "pill" ? clamp(forcedPoints ?? (bonusPhase ? bonusPoints() : 1), 1, 10) : 0;
       const sceneSpeed = SCENE_BALANCE[zone].speed;
+      const pointSpeed = kind === "pill" ? .8 + (points - 1) * (1.2 / 9) : 1;
+      const verticalSpeed = kind === "specialHeart" ? 370 : (isLogo ? 76 : kind === "blackhole" ? 54 : kind === "meteor" ? 112 : random(88, 108)) * sceneSpeed * pointSpeed;
       items.push({ id: ++itemId, kind, x: random(r + 18, WIDTH - r - 18), y: -r - random(0, 70), r,
-        speed: (isLogo ? 76 : kind === "blackhole" ? 54 : kind === "meteor" ? 112 : random(88, 132)) * sceneSpeed, drift: kind === "meteor" ? random(-55, 55) : random(-16, 16), points,
+        speed: verticalSpeed, drift: kind === "specialHeart" ? random(-80, 80) : kind === "meteor" ? random(-55, 55) : random(-16, 16), points,
         color: kind === "badPill" ? "#171c22" : COLORS[Math.max(0, points - 1) % COLORS.length], shape: Math.random() < 0.48 ? 0 : 1, rotation: random(-0.5, 0.5), spin: random(-0.25, 0.25), hits: kind === "blackhole" ? 0 : undefined });
     }
     function isRewardKind(kind: FallingItem["kind"]) {
-      return ["logo", "coffee", "heart", "ambulance", "magnet", "spaceship", "rainbowLogo"].includes(kind);
+      return ["logo", "coffee", "heart", "specialHeart", "ambulance", "magnet", "spaceship", "rainbowLogo"].includes(kind);
     }
     function burst(x: number, y: number, color: string, count = 18) {
       for (let i = 0; i < count; i++) {
@@ -347,10 +363,17 @@ export default function DoctorRelaxGame() {
       specialClock = random(7, 10); penaltyClock = random(6, 9); goldenMomentAnnounced = false; slowUntil = 0; freezeUntil = 0; magnetUntil = 0; doubleUntil = 0; shakeUntil = 0; items = []; particles = [];
       const balance = SCENE_BALANCE[zone];
       dropBudget = Math.floor(random(balance.min, balance.max + 1));
-      pillPointPlan = buildPillPointPlan(dropBudget, balance.dropCount);
+      const pointPlan = buildPillPointPlan(dropBudget, balance.dropCount);
+      earlyPillPlan = pointPlan.early;
+      latePillPlan = pointPlan.late;
+      heartSchedule = [
+        { at: random(12, 16), kind: "heart", warned: false, spawned: false },
+        { at: random(26, 30), kind: "heart", warned: false, spawned: false },
+        { at: random(40, 44), kind: "specialHeart", warned: false, spawned: false },
+      ];
       message = `Màn này bắt buộc thả đủ ${dropBudget} điểm thuốc`;
       messageUntil = performance.now() + (tier === 0 ? 2200 : 3200);
-      for (let i = 0; i < 4; i++) { spawn("pill"); items[items.length - 1].y -= i * 100; }
+      for (let i = 0; i < 4; i++) { spawn("pill", earlyPillPlan.shift()!); items[items.length - 1].y -= i * 100; }
       syncHud();
     }
     actionsRef.current.start = () => { tone(520, 0.14, 0.13); resetRound(false); startMusic(); };
@@ -401,10 +424,11 @@ export default function DoctorRelaxGame() {
       } else if (item.kind === "coffee") {
         slowUntil = now + 5000; score += 10; burst(item.x, item.y, "#d98b52", 28); rewardSound(480);
         setMessage("Cà phê: chậm lại 5 giây ☕", 1.5);
-      } else if (item.kind === "heart") {
-        if (!bonusPhase) bonusTimeBank = Math.min(10, bonusTimeBank + 5);
-        score += 8; burst(item.x, item.y, "#ef5c79", 30); rewardSound(600);
-        setMessage(bonusPhase ? "Trái tim thưởng +8 điểm ❤️" : `Đã tích ${Math.ceil(bonusTimeBank)} giây thưởng ❤️`, 1.7);
+      } else if (item.kind === "heart" || item.kind === "specialHeart") {
+        if (!bonusPhase) bonusTimeBank = Math.min(15, bonusTimeBank + 5);
+        const heartScore = item.kind === "specialHeart" ? 15 : 8;
+        score += heartScore; burst(item.x, item.y, item.kind === "specialHeart" ? "#ffcf4a" : "#ef5c79", item.kind === "specialHeart" ? 52 : 30); rewardSound(item.kind === "specialHeart" ? 780 : 600);
+        setMessage(bonusPhase ? `Trái tim thưởng +${heartScore} điểm ❤️` : item.kind === "specialHeart" ? `Bắt được Tim Sao Băng! +5 giây · +${heartScore} điểm 💖` : `Đã tích ${Math.ceil(bonusTimeBank)} giây thưởng ❤️`, 1.9);
       } else if (item.kind === "ambulance") {
         freezeUntil = now + 3000; score += 10; burst(item.x, item.y, "#20a8cf", 34); rewardSound(560);
         setMessage("Xe cấp cứu: đóng băng thuốc 3 giây 🚑", 1.7);
@@ -452,7 +476,7 @@ export default function DoctorRelaxGame() {
       const rect = gameCanvas.getBoundingClientRect();
       const x = ((event.clientX - rect.left) / rect.width) * WIDTH;
       const y = ((event.clientY - rect.top) / rect.height) * HEIGHT;
-      const chosen = [...items].reverse().find((item) => (x - item.x) ** 2 + (y - item.y) ** 2 <= (item.r + 13) ** 2);
+      const chosen = [...items].reverse().find((item) => (x - item.x) ** 2 + (y - item.y) ** 2 <= (item.r + (item.kind === "specialHeart" ? 24 : 13)) ** 2);
       if (chosen) hitItem(chosen);
       else { combo = 0; setMessage("Không sao, thử viên tiếp theo nhé 🙂", 0.7); }
     }
@@ -613,11 +637,11 @@ export default function DoctorRelaxGame() {
         ctx.fillStyle = "white"; ctx.font = "900 17px Arial, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(`${item.hits || 0}/3`, 0, 1);
       } else {
         ctx.beginPath(); ctx.arc(0, 0, item.r, 0, Math.PI * 2);
-        const backgrounds: Partial<Record<FallingItem["kind"], string>> = { coffee:"#fff1df", heart:"#ffe4eb", ambulance:"#e7f8ff", magnet:"#fff0f2", spaceship:"#e8f1ff", virus:"#efe5ff", meteor:"#f1e6dc" };
+        const backgrounds: Partial<Record<FallingItem["kind"], string>> = { coffee:"#fff1df", heart:"#ffe4eb", specialHeart:"#fff0c9", ambulance:"#e7f8ff", magnet:"#fff0f2", spaceship:"#e8f1ff", virus:"#efe5ff", meteor:"#f1e6dc" };
         ctx.fillStyle = backgrounds[item.kind] || "#eef8fa"; ctx.fill();
-        ctx.shadowBlur = 0; ctx.strokeStyle = "rgba(5,112,145,.3)"; ctx.lineWidth = 3; ctx.stroke();
+        ctx.shadowBlur = 0; ctx.strokeStyle = item.kind === "specialHeart" ? `hsl(${now / 8 % 360} 90% 58%)` : "rgba(5,112,145,.3)"; ctx.lineWidth = item.kind === "specialHeart" ? 5 : 3; ctx.stroke();
         ctx.font = `${item.r * 1.15}px Arial, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        const icons: Partial<Record<FallingItem["kind"], string>> = { coffee:"☕", heart:"❤️", ambulance:"🚑", magnet:"🧲", spaceship:"🚀", virus:"🦠", meteor:"☄️" };
+        const icons: Partial<Record<FallingItem["kind"], string>> = { coffee:"☕", heart:"❤️", specialHeart:"💖", ambulance:"🚑", magnet:"🧲", spaceship:"🚀", virus:"🦠", meteor:"☄️" };
         ctx.fillText(icons[item.kind] || "✨", 0, 3);
       }
       ctx.restore();
@@ -656,8 +680,8 @@ export default function DoctorRelaxGame() {
 
           const relativeSpeed = (b.drift - a.drift) * nx + (b.speed - a.speed) * ny;
           if (relativeSpeed < 0) {
-            const massA = a.shape === 0 ? 1 : 1.28;
-            const massB = b.shape === 0 ? 1 : 1.28;
+            const massA = (a.shape === 0 ? 1 : 1.28) * (.72 + Math.max(1, a.points) * .13);
+            const massB = (b.shape === 0 ? 1 : 1.28) * (.72 + Math.max(1, b.points) * .13);
             const impulse = -(1 + 0.7) * relativeSpeed / (1 / massA + 1 / massB);
             a.drift -= impulse * nx / massA; a.speed -= impulse * ny / massA;
             b.drift += impulse * nx / massB; b.speed += impulse * ny / massB;
@@ -668,7 +692,7 @@ export default function DoctorRelaxGame() {
             }
           }
           a.drift = clamp(a.drift, -68, 68); b.drift = clamp(b.drift, -68, 68);
-          a.speed = clamp(a.speed, -45, 175); b.speed = clamp(b.speed, -45, 175);
+          a.speed = clamp(a.speed, -45, 360); b.speed = clamp(b.speed, -45, 360);
         }
       }
     }
@@ -687,7 +711,7 @@ export default function DoctorRelaxGame() {
           bonusPhase = true;
           bonusTimeTotal = bonusTimeBank;
           timeLeft = bonusTimeBank;
-          items = items.filter((item) => item.kind !== "heart");
+          items = items.filter((item) => item.kind !== "heart" && item.kind !== "specialHeart");
           stopMusic(); startMusic(); rewardSound(690);
           message = `❤️ Thời gian thưởng: ${Math.ceil(bonusTimeBank)} giây!`;
           messageUntil = now + 2400;
@@ -697,12 +721,34 @@ export default function DoctorRelaxGame() {
       spawnClock -= delta; specialClock -= delta;
       penaltyClock -= delta;
       const sceneBalance = SCENE_BALANCE[zone];
-      const urgentDrop = !bonusPhase && baseTimeLeft <= 8 && pillPointPlan.length > 0;
+      if (!bonusPhase) {
+        for (const heartEvent of heartSchedule) {
+          if (heartEvent.kind === "specialHeart" && !heartEvent.warned && roundElapsed >= heartEvent.at - .4) {
+            heartEvent.warned = true;
+            tone(980, .12, .05, "triangle");
+            setMessage("💖 Tim Sao Băng đang đến — chuẩn bị!", .7);
+          }
+          if (!heartEvent.spawned && roundElapsed >= heartEvent.at) {
+            heartEvent.spawned = true;
+            spawn(heartEvent.kind);
+            if (heartEvent.kind === "specialHeart") { rewardSound(720); setMessage("💖 Tim Sao Băng xuất hiện!", 1.1); }
+            else setMessage("❤️ Trái tim +5 giây xuất hiện!", 1.1);
+          }
+        }
+      }
+      const mandatoryRemaining = earlyPillPlan.length + latePillPlan.length;
+      const activeMandatoryCount = baseTimeLeft > 10 ? earlyPillPlan.length : mandatoryRemaining;
+      const urgentDrop = !bonusPhase && baseTimeLeft <= 8 && mandatoryRemaining > 0;
       const normalItemLimit = sceneBalance.maxItems + (tier >= 3 ? 6 : 0);
-      if (pillPointPlan.length > 0 && spawnClock <= 0 && items.length < (urgentDrop ? 40 : normalItemLimit)) {
-        spawn("pill");
-        const mustFinishInterval = Math.max(.12, (baseTimeLeft - 2) / Math.max(1, pillPointPlan.length));
-        spawnClock = urgentDrop ? random(.12, .18) : Math.min(random(sceneBalance.spawn[0], sceneBalance.spawn[1]), mustFinishInterval);
+      const pillCountOnScreen = items.filter((item) => item.kind === "pill").length;
+      if (!bonusPhase && activeMandatoryCount > 0 && pillCountOnScreen < 3) spawnClock = 0;
+      if (!bonusPhase && activeMandatoryCount > 0 && spawnClock <= 0 && items.length < (urgentDrop ? 44 : normalItemLimit)) {
+        const nextPoints = baseTimeLeft > 10 && earlyPillPlan.length > 0 ? earlyPillPlan.shift()! : earlyPillPlan.length > 0 ? earlyPillPlan.shift()! : latePillPlan.shift()!;
+        spawn("pill", nextPoints);
+        const remainingForWindow = baseTimeLeft > 10 ? earlyPillPlan.length : earlyPillPlan.length + latePillPlan.length;
+        const secondsToWindowEnd = Math.max(.8, baseTimeLeft - (baseTimeLeft > 10 ? 10 : 2));
+        const evenlySpaced = secondsToWindowEnd / Math.max(1, remainingForWindow + 1);
+        spawnClock = clamp(evenlySpaced, .1, sceneBalance.spawn[1]);
       } else if (bonusPhase && spawnClock <= 0 && items.length < normalItemLimit) {
         spawn("pill");
         spawnClock = random(sceneBalance.spawn[0], sceneBalance.spawn[1]) * .9;
@@ -711,14 +757,14 @@ export default function DoctorRelaxGame() {
         goldenMomentAnnounced = true; rewardSound(760); setMessage("✨ Khoảnh khắc vàng: 5 giây thưởng cuối!", 2.2);
       }
       if (specialClock <= 0) {
-        const rewards: FallingItem["kind"][] = bonusPhase ? ["logo", "coffee"] : ["logo", "coffee", "heart"];
+        const rewards: FallingItem["kind"][] = ["logo", "coffee"];
         if (tier >= 1) rewards.push("ambulance");
         if (tier >= 2) rewards.push("magnet");
         if (tier >= 3) rewards.push("spaceship");
         if (tier >= 4) rewards.push("rainbowLogo");
         const reward = rewards[Math.floor(Math.random() * rewards.length)];
         spawn(reward); specialClock = random(7.5, 11);
-        const rewardNames: Partial<Record<FallingItem["kind"], string>> = { logo:"Logo GPP", coffee:"Cà phê", heart:"Trái tim", ambulance:"Xe cấp cứu", magnet:"Nam châm y tế", spaceship:"Phi thuyền", rainbowLogo:"Logo GPP cầu vồng" };
+        const rewardNames: Partial<Record<FallingItem["kind"], string>> = { logo:"Logo GPP", coffee:"Cà phê", ambulance:"Xe cấp cứu", magnet:"Nam châm y tế", spaceship:"Phi thuyền", rainbowLogo:"Logo GPP cầu vồng" };
         setMessage(`${rewardNames[reward]} xuất hiện!`, 1.4);
       }
       if (tier >= 1 && penaltyClock <= 0) {
@@ -736,7 +782,7 @@ export default function DoctorRelaxGame() {
       const blackholes = items.filter((entry) => entry.kind === "blackhole");
       for (const item of items) {
         const isMedicine = item.kind === "pill" || item.kind === "badPill";
-        if (isMedicine) item.speed = Math.min(220, item.speed + (tier >= 3 ? 10 : 22) * SCENE_BALANCE[zone].speed * delta);
+        if (isMedicine) item.speed = Math.min(360, item.speed + (tier >= 3 ? 10 : 22) * SCENE_BALANCE[zone].speed * delta);
         if (now < magnetUntil && item.kind === "pill") {
           item.drift += clamp((magnetX - item.x) * 0.42 * delta, -18, 18);
           item.speed += clamp((magnetY - item.y) * 0.2 * delta, -12, 12);
@@ -748,8 +794,11 @@ export default function DoctorRelaxGame() {
         }
         const freezeFactor = now < freezeUntil && isMedicine ? 0.04 : 1;
         const floatingDrift = tier >= 3 && isMedicine ? Math.sin(now / 520 + item.id) * 11 : 0;
-        item.y += item.speed * slowFactor * lowGravityFactor * freezeFactor * delta;
-        item.x += (item.drift + floatingDrift) * delta; item.rotation += item.spin * delta;
+        const specialHeartWave = item.kind === "specialHeart" ? Math.sin(now / 72 + item.id) * 235 : 0;
+        const itemSlowFactor = item.kind === "specialHeart" ? 1 : slowFactor;
+        const itemGravityFactor = item.kind === "specialHeart" ? 1 : lowGravityFactor;
+        item.y += item.speed * itemSlowFactor * itemGravityFactor * freezeFactor * delta;
+        item.x += (item.drift + floatingDrift + specialHeartWave) * delta; item.rotation += item.spin * delta;
         if (item.x < item.r) { item.x = item.r; item.drift = Math.abs(item.drift) * 0.8; }
         if (item.x > WIDTH - item.r) { item.x = WIDTH - item.r; item.drift = -Math.abs(item.drift) * 0.8; }
       }
