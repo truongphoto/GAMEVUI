@@ -113,12 +113,15 @@ footer { display:flex; justify-content:space-between; padding:7px 4px 0; color:#
   h1 { font-size:29px; }
   .tagline { margin-top:3px; font-size:12px; }
   .icon-button { min-height:38px; padding:0 12px; font-size:12px; }
-  .game-card { grid-column:1; grid-row:2/4; padding:8px; border-radius:22px; }
-  .upgrade-roadmap { gap:5px; margin-bottom:6px; }
+  .game-card { grid-column:1; grid-row:2/4; display:flex; flex-direction:column; padding:8px; border-radius:22px; }
+  .time-track { order:1; }
+  .canvas-wrap { order:2; }
+  .status-row { order:3; }
+  .upgrade-roadmap { order:4; gap:5px; margin:6px 0; }
   .upgrade-step { min-height:42px; padding:4px 6px; border-radius:12px; }
   .upgrade-step>span { width:26px; height:26px; flex-basis:26px; font-size:14px; }
   .upgrade-step strong { font-size:11px; }
-  .hud { gap:5px; margin-bottom:6px; }
+  .hud { order:5; gap:5px; margin-bottom:0; }
   .hud-item { min-height:44px; padding:5px; border-radius:13px; }
   .hud-item span { font-size:11px; }
   .hud-item strong { font-size:20px; }
