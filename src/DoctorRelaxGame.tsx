@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 type Phase = "idle" | "playing" | "paused" | "reveal" | "finished";
-type Hud = { phase: Phase; score: number; time: number; combo: number; roundBestCombo: number; best: number; sound: boolean; music: boolean; zone: number; tier: number; unlockedTier: number; message: string };
+type Hud = { phase: Phase; score: number; dropBudget: number; time: number; bonusPhase: boolean; bonusBank: number; bonusTotal: number; combo: number; roundBestCombo: number; best: number; sound: boolean; music: boolean; zone: number; tier: number; unlockedTier: number; message: string };
 type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
 type FallingItem = {
   id: number;
@@ -46,12 +46,12 @@ const CAMERAS = [
   { x: 0.5, y: 0.5, scale: 1 },      // Toàn cảnh bệnh viện
 ];
 const SCENE_BALANCE = [
-  { min: 650, max: 750, target: 700, speed: .85, spawn: [.78, .92] as const, maxItems: 15 },
-  { min: 780, max: 900, target: 840, speed: .95, spawn: [.70, .84] as const, maxItems: 16 },
-  { min: 920, max: 1050, target: 985, speed: 1.05, spawn: [.64, .77] as const, maxItems: 17 },
-  { min: 1070, max: 1200, target: 1135, speed: 1.15, spawn: [.58, .70] as const, maxItems: 18 },
-  { min: 1200, max: 1350, target: 1275, speed: 1.25, spawn: [.53, .64] as const, maxItems: 20 },
-  { min: 1300, max: 1500, target: 1400, speed: 1.35, spawn: [.48, .59] as const, maxItems: 22 },
+  { min: 650, max: 750, target: 700, speed: .85, spawn: [.80, .88] as const, maxItems: 15, dropCount: 66 },
+  { min: 780, max: 900, target: 840, speed: .95, spawn: [.72, .80] as const, maxItems: 16, dropCount: 73 },
+  { min: 920, max: 1050, target: 985, speed: 1.05, spawn: [.65, .73] as const, maxItems: 17, dropCount: 80 },
+  { min: 1070, max: 1200, target: 1135, speed: 1.15, spawn: [.60, .67] as const, maxItems: 18, dropCount: 86 },
+  { min: 1200, max: 1350, target: 1275, speed: 1.25, spawn: [.56, .62] as const, maxItems: 20, dropCount: 92 },
+  { min: 1300, max: 1500, target: 1400, speed: 1.35, spawn: [.52, .58] as const, maxItems: 22, dropCount: 98 },
 ];
 // Mỗi cấp có một đường máy quay riêng: xuất phát quanh TRƯỜNG GPP, lướt qua các khu rồi lùi ra toàn cảnh.
 const MOBILE_CINEMATIC_PATHS = [
@@ -64,6 +64,21 @@ const MOBILE_CINEMATIC_PATHS = [
 const MUSIC_NOTES = [523.25, 659.25, 783.99, 659.25, 698.46, 880, 783.99, 659.25, 587.33, 698.46, 880, 698.46, 659.25, 783.99, 1046.5, 783.99];
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 const random = (min: number, max: number) => Math.random() * (max - min) + min;
+
+function buildPillPointPlan(total: number, count: number) {
+  const weights = Array.from({ length: count }, (_, index) => {
+    const progress = index / Math.max(1, count - 1);
+    const finalBoost = progress >= .84 ? 1.22 : progress >= .68 ? 1.08 : 1;
+    return (.84 + progress * .32) * finalBoost * random(.93, 1.07);
+  });
+  const weightTotal = weights.reduce((sum, weight) => sum + weight, 0);
+  const exact = weights.map((weight) => total * weight / weightTotal);
+  const points = exact.map((value) => Math.max(1, Math.floor(value)));
+  let remainder = total - points.reduce((sum, value) => sum + value, 0);
+  const priority = exact.map((value, index) => ({ index, fraction: value - Math.floor(value) })).sort((a, b) => b.fraction - a.fraction);
+  for (let index = 0; remainder > 0; index++, remainder--) points[priority[index % priority.length].index] += 1;
+  return points;
+}
 
 function getResult(score: number) {
   if (score >= 350) return { icon: "🏆", title: "Bàn tay vàng!", copy: "Ca trực căng thẳng đã được xử lý cực gọn." };
@@ -81,7 +96,7 @@ function getMedal(score: number, target: number) {
 export default function DoctorRelaxGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const actionsRef = useRef({ start: () => {}, pause: () => {}, restart: () => {}, skipReveal: () => {}, selectTier: (_tier: number) => {}, toggleSound: () => {}, toggleMusic: () => {} });
-  const [hud, setHud] = useState<Hud>({ phase: "idle", score: 0, time: ROUND_SECONDS, combo: 0, roundBestCombo: 0, best: 0, sound: true, music: true, zone: 0, tier: 0, unlockedTier: 0, message: "Chạm Bắt đầu để thư giãn" });
+  const [hud, setHud] = useState<Hud>({ phase: "idle", score: 0, dropBudget: SCENE_BALANCE[0].target, time: ROUND_SECONDS, bonusPhase: false, bonusBank: 0, bonusTotal: 0, combo: 0, roundBestCombo: 0, best: 0, sound: true, music: true, zone: 0, tier: 0, unlockedTier: 0, message: "Chạm Bắt đầu để thư giãn" });
   const [showTierPicker, setShowTierPicker] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
   const [showInstallHelp, setShowInstallHelp] = useState(false);
@@ -143,7 +158,13 @@ export default function DoctorRelaxGame() {
     let particles: Particle[] = [];
     let phase: Phase = "idle";
     let score = 0;
+    let dropBudget = SCENE_BALANCE[0].target;
+    let pillPointPlan: number[] = [];
     let timeLeft = ROUND_SECONDS;
+    let baseTimeLeft = ROUND_SECONDS;
+    let bonusTimeBank = 0;
+    let bonusTimeTotal = 0;
+    let bonusPhase = false;
     let roundElapsed = 0;
     let combo = 0;
     let roundBestCombo = 0;
@@ -181,7 +202,7 @@ export default function DoctorRelaxGame() {
     const logoImage = new Image();
     logoImage.src = `${ASSET_BASE}logo.png`;
 
-    const syncHud = () => setHud({ phase, score: Math.round(score), time: Math.max(0, Math.ceil(timeLeft)), combo, roundBestCombo, best, sound, music, zone, tier, unlockedTier, message });
+    const syncHud = () => setHud({ phase, score: Math.round(score), dropBudget, time: Math.max(0, Math.ceil(timeLeft)), bonusPhase, bonusBank: Math.max(0, Math.ceil(bonusTimeBank)), bonusTotal: bonusTimeTotal, combo, roundBestCombo, best, sound, music, zone, tier, unlockedTier, message });
     function setMessage(next: string, duration = 1.5) {
       message = next;
       messageUntil = performance.now() + duration * 1000;
@@ -249,7 +270,7 @@ export default function DoctorRelaxGame() {
         musicStarting = false;
         if (!music || phase !== "playing" || musicTimer !== null) return;
         playMusicNote();
-        musicTimer = window.setInterval(playMusicNote, 360);
+        musicTimer = window.setInterval(playMusicNote, bonusPhase ? 270 : 360);
       };
       if (audioContext.state === "suspended") audioContext.resume().then(begin).catch(() => { musicStarting = false; });
       else begin();
@@ -268,13 +289,12 @@ export default function DoctorRelaxGame() {
       const isLogo = kind === "logo" || kind === "rainbowLogo";
       const isPill = kind === "pill" || kind === "badPill";
       const r = isLogo ? 50 : kind === "blackhole" ? 43 : kind === "meteor" ? 36 : isPill ? random(25, 31) : 31;
-      const finalTenBoost = kind === "pill" && timeLeft <= 10 ? 2 : 0;
-      const goldenBoost = kind === "pill" && zone === ZONES.length - 1 && timeLeft <= 5 ? 2 : 0;
-      const points = kind === "pill" ? Math.ceil(random(0, 5)) + finalTenBoost + goldenBoost : 0;
+      const bonusPoints = () => Math.ceil(random(4 + zone, 8 + zone * 1.6));
+      const points = kind === "pill" ? (pillPointPlan.length > 0 ? pillPointPlan.shift()! : bonusPhase ? bonusPoints() : 1) : 0;
       const sceneSpeed = SCENE_BALANCE[zone].speed;
       items.push({ id: ++itemId, kind, x: random(r + 18, WIDTH - r - 18), y: -r - random(0, 70), r,
         speed: (isLogo ? 76 : kind === "blackhole" ? 54 : kind === "meteor" ? 112 : random(88, 132)) * sceneSpeed, drift: kind === "meteor" ? random(-55, 55) : random(-16, 16), points,
-        color: kind === "badPill" ? "#171c22" : COLORS[Math.max(0, points - 1)] || "#0979a6", shape: Math.random() < 0.48 ? 0 : 1, rotation: random(-0.5, 0.5), spin: random(-0.25, 0.25), hits: kind === "blackhole" ? 0 : undefined });
+        color: kind === "badPill" ? "#171c22" : COLORS[Math.max(0, points - 1) % COLORS.length], shape: Math.random() < 0.48 ? 0 : 1, rotation: random(-0.5, 0.5), spin: random(-0.25, 0.25), hits: kind === "blackhole" ? 0 : undefined });
     }
     function isRewardKind(kind: FallingItem["kind"]) {
       return ["logo", "coffee", "heart", "ambulance", "magnet", "spaceship", "rainbowLogo"].includes(kind);
@@ -323,9 +343,12 @@ export default function DoctorRelaxGame() {
         else if (tier < HOSPITAL_TIERS.length - 1) { tier += 1; zone = 0; }
         else { tier = 0; zone = 0; }
       }
-      phase = "playing"; score = 0; timeLeft = ROUND_SECONDS; roundElapsed = 0; combo = 0; roundBestCombo = 0; lastHitAt = 0; spawnClock = 0;
+      phase = "playing"; score = 0; timeLeft = ROUND_SECONDS; baseTimeLeft = ROUND_SECONDS; bonusTimeBank = 0; bonusTimeTotal = 0; bonusPhase = false; roundElapsed = 0; combo = 0; roundBestCombo = 0; lastHitAt = 0; spawnClock = 0;
       specialClock = random(7, 10); penaltyClock = random(6, 9); goldenMomentAnnounced = false; slowUntil = 0; freezeUntil = 0; magnetUntil = 0; doubleUntil = 0; shakeUntil = 0; items = []; particles = [];
-      message = `Mục tiêu ${SCENE_BALANCE[zone].target} · Điểm tiềm năng ${SCENE_BALANCE[zone].min}–${SCENE_BALANCE[zone].max}`;
+      const balance = SCENE_BALANCE[zone];
+      dropBudget = Math.floor(random(balance.min, balance.max + 1));
+      pillPointPlan = buildPillPointPlan(dropBudget, balance.dropCount);
+      message = `Màn này bắt buộc thả đủ ${dropBudget} điểm thuốc`;
       messageUntil = performance.now() + (tier === 0 ? 2200 : 3200);
       for (let i = 0; i < 4; i++) { spawn("pill"); items[items.length - 1].y -= i * 100; }
       syncHud();
@@ -379,8 +402,9 @@ export default function DoctorRelaxGame() {
         slowUntil = now + 5000; score += 10; burst(item.x, item.y, "#d98b52", 28); rewardSound(480);
         setMessage("Cà phê: chậm lại 5 giây ☕", 1.5);
       } else if (item.kind === "heart") {
-        timeLeft = Math.min(70, timeLeft + 5); score += 8; burst(item.x, item.y, "#ef5c79", 30); rewardSound(600);
-        setMessage("Thêm 5 giây yêu thương ❤️", 1.5);
+        if (!bonusPhase) bonusTimeBank = Math.min(10, bonusTimeBank + 5);
+        score += 8; burst(item.x, item.y, "#ef5c79", 30); rewardSound(600);
+        setMessage(bonusPhase ? "Trái tim thưởng +8 điểm ❤️" : `Đã tích ${Math.ceil(bonusTimeBank)} giây thưởng ❤️`, 1.7);
       } else if (item.kind === "ambulance") {
         freezeUntil = now + 3000; score += 10; burst(item.x, item.y, "#20a8cf", 34); rewardSound(560);
         setMessage("Xe cấp cứu: đóng băng thuốc 3 giây 🚑", 1.7);
@@ -400,7 +424,10 @@ export default function DoctorRelaxGame() {
         score = Math.max(0, score - 5); burst(item.x, item.y, "#1b2026", 24); penaltySound();
         setMessage("Thuốc đầu lâu: trừ 5 điểm ☠️", 1.5);
       } else if (item.kind === "virus") {
-        timeLeft = Math.max(0, timeLeft - 3); burst(item.x, item.y, "#7c4dcc", 26); penaltySound();
+        if (bonusPhase) bonusTimeBank = Math.max(0, bonusTimeBank - 3);
+        else baseTimeLeft = Math.max(0, baseTimeLeft - 3);
+        timeLeft = bonusPhase ? bonusTimeBank : baseTimeLeft;
+        burst(item.x, item.y, "#7c4dcc", 26); penaltySound();
         setMessage("Virus tinh nghịch: trừ 3 giây 🦠", 1.5);
       } else if (item.kind === "meteor") {
         combo = 0; shakeUntil = now + 520; burst(item.x, item.y, "#845f4a", 32); penaltySound();
@@ -508,7 +535,7 @@ export default function DoctorRelaxGame() {
         const labelWidth = mobileLayout ? WIDTH - 32 : 390;
         roundedRect(mobileLayout ? 16 : 24, mobileLayout ? 15 : 22, labelWidth, mobileLayout ? 42 : 46, 22); ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.fill();
         ctx.fillStyle = "#075a78"; ctx.font = `700 ${mobileLayout ? 15 : 17}px Arial, sans-serif`; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-        ctx.fillText(`${HOSPITAL_TIERS[tier].short} · Màn ${zone + 1}/${ZONES.length} · ${ZONES[zone]} · MT ${SCENE_BALANCE[zone].target}`, mobileLayout ? 32 : 43, mobileLayout ? 36 : 45, labelWidth - 28);
+        ctx.fillText(`${HOSPITAL_TIERS[tier].short} · Màn ${zone + 1}/${ZONES.length} · ${ZONES[zone]} · Rơi ${dropBudget} điểm`, mobileLayout ? 32 : 43, mobileLayout ? 36 : 45, labelWidth - 28);
       }
     }
     function drawPill(item: FallingItem) {
@@ -647,22 +674,44 @@ export default function DoctorRelaxGame() {
     }
     function update(delta: number, now: number) {
       if (phase !== "playing") return;
-      timeLeft -= delta;
       roundElapsed += delta;
-      if (timeLeft <= 0) { finishRound(); return; }
+      if (bonusPhase) {
+        bonusTimeBank -= delta;
+        timeLeft = bonusTimeBank;
+        if (bonusTimeBank <= 0) { finishRound(); return; }
+      } else {
+        baseTimeLeft -= delta;
+        timeLeft = baseTimeLeft;
+        if (baseTimeLeft <= 0) {
+          if (bonusTimeBank <= 0) { finishRound(); return; }
+          bonusPhase = true;
+          bonusTimeTotal = bonusTimeBank;
+          timeLeft = bonusTimeBank;
+          items = items.filter((item) => item.kind !== "heart");
+          stopMusic(); startMusic(); rewardSound(690);
+          message = `❤️ Thời gian thưởng: ${Math.ceil(bonusTimeBank)} giây!`;
+          messageUntil = now + 2400;
+          syncHud();
+        }
+      }
       spawnClock -= delta; specialClock -= delta;
       penaltyClock -= delta;
       const sceneBalance = SCENE_BALANCE[zone];
-      if (spawnClock <= 0 && items.length < sceneBalance.maxItems) {
+      const urgentDrop = !bonusPhase && baseTimeLeft <= 8 && pillPointPlan.length > 0;
+      const normalItemLimit = sceneBalance.maxItems + (tier >= 3 ? 6 : 0);
+      if (pillPointPlan.length > 0 && spawnClock <= 0 && items.length < (urgentDrop ? 40 : normalItemLimit)) {
         spawn("pill");
-        const goldenRate = zone === ZONES.length - 1 && timeLeft <= 5 ? .68 : timeLeft <= 10 ? .82 : 1;
-        spawnClock = random(sceneBalance.spawn[0], sceneBalance.spawn[1]) * goldenRate;
+        const mustFinishInterval = Math.max(.12, (baseTimeLeft - 2) / Math.max(1, pillPointPlan.length));
+        spawnClock = urgentDrop ? random(.12, .18) : Math.min(random(sceneBalance.spawn[0], sceneBalance.spawn[1]), mustFinishInterval);
+      } else if (bonusPhase && spawnClock <= 0 && items.length < normalItemLimit) {
+        spawn("pill");
+        spawnClock = random(sceneBalance.spawn[0], sceneBalance.spawn[1]) * .9;
       }
-      if (!goldenMomentAnnounced && zone === ZONES.length - 1 && timeLeft <= 5) {
+      if (!goldenMomentAnnounced && !bonusPhase && zone === ZONES.length - 1 && baseTimeLeft <= 5) {
         goldenMomentAnnounced = true; rewardSound(760); setMessage("✨ Khoảnh khắc vàng: 5 giây thưởng cuối!", 2.2);
       }
       if (specialClock <= 0) {
-        const rewards: FallingItem["kind"][] = ["logo", "coffee", "heart"];
+        const rewards: FallingItem["kind"][] = bonusPhase ? ["logo", "coffee"] : ["logo", "coffee", "heart"];
         if (tier >= 1) rewards.push("ambulance");
         if (tier >= 2) rewards.push("magnet");
         if (tier >= 3) rewards.push("spaceship");
@@ -716,7 +765,7 @@ export default function DoctorRelaxGame() {
       items = items.filter((item) => item.y < HEIGHT + item.r);
       if (combo > 0 && now - lastHitAt > 1500) combo = 0;
       if (messageUntil && now > messageUntil) {
-        messageUntil = 0; message = now < slowUntil ? "Đang chậm lại — tận hưởng nhé ☕" : "Chạm vào thuốc để ghi điểm!"; syncHud();
+        messageUntil = 0; message = bonusPhase ? "❤️ Thời gian thưởng — ghi điểm phá kỷ lục!" : now < slowUntil ? "Đang chậm lại — tận hưởng nhé ☕" : "Chạm vào thuốc để ghi điểm!"; syncHud();
       }
       for (const particle of particles) { particle.x += particle.vx * delta; particle.y += particle.vy * delta; particle.vy += 220 * delta; particle.life -= delta; }
       particles = particles.filter((particle) => particle.life > 0);
@@ -738,7 +787,7 @@ export default function DoctorRelaxGame() {
   const result = getResult(hud.score);
   const sceneBalance = SCENE_BALANCE[hud.zone];
   const medal = getMedal(hud.score, sceneBalance.target);
-  const progress = clamp((hud.time / ROUND_SECONDS) * 100, 0, 100);
+  const progress = clamp((hud.time / (hud.bonusPhase ? Math.max(1, hud.bonusTotal) : ROUND_SECONDS)) * 100, 0, 100);
   const isChapterComplete = hud.zone === ZONES.length - 1;
   const isSuperComplete = isChapterComplete && hud.tier === HOSPITAL_TIERS.length - 1;
   const nextTier = HOSPITAL_TIERS[Math.min(hud.tier + 1, HOSPITAL_TIERS.length - 1)];
@@ -771,12 +820,12 @@ export default function DoctorRelaxGame() {
         <div className="hud">
           <div className="hud-item tier"><span>Cấp bệnh viện</span><strong>{hud.tier === 0 ? "Gốc" : `${hud.tier}/4`}</strong></div>
           <div className="hud-item level"><span>Màn</span><strong>{hud.zone + 1}/{ZONES.length}</strong></div>
-          <div className="hud-item score-target"><span>Điểm · MT {sceneBalance.target}</span><strong>{hud.score}</strong></div>
-          <div className="hud-item timer"><span>Thời gian</span><strong>{hud.time}s</strong></div>
+          <div className="hud-item score-target"><span>Điểm · Rơi đủ {hud.dropBudget}</span><strong>{hud.score}</strong></div>
+          <div className={`hud-item timer ${hud.bonusPhase ? "bonus" : ""}`}><span>{hud.bonusPhase ? "❤️ Thời gian thưởng" : hud.bonusBank > 0 ? `Thời gian · +${hud.bonusBank}s` : "Thời gian"}</span><strong>{hud.time}s</strong></div>
           <div className={`hud-item combo ${hud.combo >= 5 ? "active" : ""}`}><span>Chuỗi</span><strong>{hud.combo}</strong></div>
           <div className="hud-item best"><span>Kỷ lục</span><strong>{hud.best}</strong></div>
         </div>
-        <div className="time-track" aria-label={`Còn ${hud.time} giây`}><span style={{ width: `${progress}%` }} /></div>
+        <div className={`time-track ${hud.bonusPhase ? "bonus" : ""}`} aria-label={`Còn ${hud.time} giây`}><span style={{ width: `${progress}%` }} /></div>
         <div className="canvas-wrap">
           <canvas ref={canvasRef} className="game-canvas" aria-label="Khu vực chơi, chạm vào các viên thuốc" />
           {hud.phase === "idle" && <div className="game-overlay welcome-panel">
