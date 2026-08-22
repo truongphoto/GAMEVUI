@@ -6,9 +6,10 @@ type Phase = "idle" | "playing" | "paused" | "finished";
 type Hud = { phase: Phase; score: number; time: number; combo: number; best: number; sound: boolean; music: boolean; zone: number; tier: number; message: string };
 type FallingItem = {
   id: number;
-  kind: "pill" | "logo" | "coffee" | "heart";
+  kind: "pill" | "logo" | "coffee" | "heart" | "ambulance" | "magnet" | "spaceship" | "rainbowLogo" | "badPill" | "virus" | "meteor" | "blackhole";
   x: number; y: number; r: number; speed: number; drift: number;
   points: number; color: string; shape: number; rotation: number; spin: number;
+  hits?: number;
 };
 type Particle = { x: number; y: number; vx: number; vy: number; life: number; size: number; color: string };
 
@@ -25,6 +26,13 @@ const HOSPITAL_TIERS = [
   { name: "Cấp 2 · Tương lai", short: "Tương lai", image: `${ASSET_BASE}hospital-upgrade-2.jpg`, icon: "🚀" },
   { name: "Cấp 3 · Vũ trụ", short: "Vũ trụ", image: `${ASSET_BASE}hospital-upgrade-3.jpg`, icon: "🪐" },
   { name: "Cấp 4 · Siêu cấp", short: "Siêu cấp", image: `${ASSET_BASE}hospital-upgrade-4.jpg`, icon: "🌌" },
+];
+const TIER_INTROS = [
+  "Chạm vào thuốc để ghi điểm!",
+  "Cấp 1: 🚑 xe cấp cứu và ☠️ thuốc đầu lâu đã xuất hiện!",
+  "Cấp 2: 🧲 nam châm và 🦠 virus đã được thêm vào!",
+  "Cấp 3: 🚀 phi thuyền, trọng lực nhẹ và ☄️ thiên thạch!",
+  "Cấp 4: 🌈 logo GPP cầu vồng và hố đen quá tải!",
 ];
 const COLORS = ["#34a853", "#13a6c7", "#f3b61f", "#ff7a45", "#e95c78"];
 // Mỗi màn là một góc bệnh viện khác nhau; scale là phần ảnh gốc camera nhìn thấy.
@@ -74,7 +82,15 @@ export default function DoctorRelaxGame() {
     let lastHitAt = 0;
     let spawnClock = 0;
     let specialClock = 8;
+    let penaltyClock = 7;
     let slowUntil = 0;
+    let freezeUntil = 0;
+    let magnetUntil = 0;
+    let doubleUntil = 0;
+    let shakeUntil = 0;
+    let magnetX = 0;
+    let magnetY = 0;
+    let lastCollisionSound = 0;
     let zone = 0;
     let tier = 0;
     // Bật âm thanh mặc định; chỉ tắt khi người chơi đã chủ động chọn yên lặng.
@@ -101,14 +117,14 @@ export default function DoctorRelaxGame() {
       messageUntil = performance.now() + duration * 1000;
       syncHud();
     }
-    function tone(frequency: number, length = 0.09, volume = 0.12) {
+    function tone(frequency: number, length = 0.09, volume = 0.12, wave: OscillatorType = "sine") {
       if (!sound) return;
       audioContext ??= new AudioContext();
       const play = () => {
         if (!audioContext) return;
         const oscillator = audioContext.createOscillator();
         const gain = audioContext.createGain();
-        oscillator.type = "sine";
+        oscillator.type = wave;
         oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
         gain.gain.setValueAtTime(volume, audioContext.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + length);
@@ -118,6 +134,18 @@ export default function DoctorRelaxGame() {
       };
       if (audioContext.state === "suspended") audioContext.resume().then(play).catch(() => {});
       else play();
+    }
+    function rewardSound(base = 520) {
+      tone(base, 0.09, 0.055, "triangle");
+      window.setTimeout(() => tone(base * 1.28, 0.11, 0.05, "triangle"), 70);
+      window.setTimeout(() => tone(base * 1.6, 0.14, 0.045, "sine"), 145);
+    }
+    function penaltySound() {
+      tone(220, 0.13, 0.065, "square");
+      window.setTimeout(() => tone(155, 0.18, 0.055, "sawtooth"), 85);
+    }
+    function victorySound() {
+      [660, 820, 980, 1174].forEach((frequency, index) => window.setTimeout(() => tone(frequency, 0.2, 0.05, "triangle"), index * 90));
     }
     function playMusicNote() {
       if (!music || phase !== "playing" || !audioContext) return;
@@ -167,11 +195,16 @@ export default function DoctorRelaxGame() {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
     function spawn(kind: FallingItem["kind"] = "pill") {
-      const r = kind === "logo" ? 50 : kind === "pill" ? random(25, 31) : 31;
+      const isLogo = kind === "logo" || kind === "rainbowLogo";
+      const isPill = kind === "pill" || kind === "badPill";
+      const r = isLogo ? 50 : kind === "blackhole" ? 43 : kind === "meteor" ? 36 : isPill ? random(25, 31) : 31;
       const points = kind === "pill" ? Math.ceil(random(0, 5)) : 0;
       items.push({ id: ++itemId, kind, x: random(r + 18, WIDTH - r - 18), y: -r - random(0, 70), r,
-        speed: kind === "logo" ? 76 : random(88, 132), drift: random(-16, 16), points,
-        color: COLORS[Math.max(0, points - 1)] || "#0979a6", shape: Math.random() < 0.48 ? 0 : 1, rotation: random(-0.5, 0.5), spin: random(-0.25, 0.25) });
+        speed: isLogo ? 76 : kind === "blackhole" ? 54 : kind === "meteor" ? 112 : random(88, 132), drift: kind === "meteor" ? random(-55, 55) : random(-16, 16), points,
+        color: kind === "badPill" ? "#171c22" : COLORS[Math.max(0, points - 1)] || "#0979a6", shape: Math.random() < 0.48 ? 0 : 1, rotation: random(-0.5, 0.5), spin: random(-0.25, 0.25), hits: kind === "blackhole" ? 0 : undefined });
+    }
+    function isRewardKind(kind: FallingItem["kind"]) {
+      return ["logo", "coffee", "heart", "ambulance", "magnet", "spaceship", "rainbowLogo"].includes(kind);
     }
     function burst(x: number, y: number, color: string, count = 18) {
       for (let i = 0; i < count; i++) {
@@ -187,10 +220,7 @@ export default function DoctorRelaxGame() {
       timeLeft = 0;
       combo = 0;
       if (score > best) { best = Math.round(score); localStorage.setItem("gpp-relax-best", String(best)); }
-      tone(660, 0.16, 0.055);
-      window.setTimeout(() => tone(820, 0.18, 0.045), 90);
-      window.setTimeout(() => tone(980, 0.2, 0.05), 190);
-      window.setTimeout(() => tone(1174, 0.28, 0.055), 310);
+      victorySound();
       message = "Hoàn thành một phút nạp năng lượng!";
       syncHud();
     }
@@ -201,8 +231,8 @@ export default function DoctorRelaxGame() {
         else { tier = 0; zone = 0; }
       }
       phase = "playing"; score = 0; timeLeft = ROUND_SECONDS; roundElapsed = 0; combo = 0; lastHitAt = 0; spawnClock = 0;
-      specialClock = random(7, 10); slowUntil = 0; items = []; particles = [];
-      message = "Chạm vào thuốc để ghi điểm!"; messageUntil = performance.now() + 1800;
+      specialClock = random(7, 10); penaltyClock = random(6, 9); slowUntil = 0; freezeUntil = 0; magnetUntil = 0; doubleUntil = 0; shakeUntil = 0; items = []; particles = [];
+      message = TIER_INTROS[tier]; messageUntil = performance.now() + (tier === 0 ? 1800 : 3200);
       for (let i = 0; i < 4; i++) { spawn("pill"); items[items.length - 1].y -= i * 100; }
       syncHud();
     }
@@ -231,25 +261,60 @@ export default function DoctorRelaxGame() {
         combo = now - lastHitAt < 1500 ? combo + 1 : 1;
         lastHitAt = now;
         const multiplier = Math.min(5, 1 + Math.floor(combo / 5));
-        score += item.points * multiplier;
+        const doubleMultiplier = now < doubleUntil ? 2 : 1;
+        score += item.points * multiplier * doubleMultiplier;
         burst(item.x, item.y, item.color, 16 + multiplier * 2);
-        tone(380 + item.points * 65 + multiplier * 20);
-        setMessage(combo >= 5 ? `Chuỗi ${combo} · x${multiplier} điểm!` : `+${item.points * multiplier} điểm`, 0.7);
+        tone(390 + item.points * 70 + multiplier * 22, 0.08, 0.055, "triangle");
+        setMessage(combo >= 5 ? `Chuỗi ${combo} · x${multiplier * doubleMultiplier} điểm!` : `+${item.points * multiplier * doubleMultiplier} điểm`, 0.7);
       } else if (item.kind === "logo") {
         const cleared = items.filter((entry) => entry.kind === "pill").length;
         score += 18 + cleared * 2;
         items.filter((entry) => entry.kind === "pill").forEach((entry) => burst(entry.x, entry.y, entry.color, 8));
         items = items.filter((entry) => entry.kind !== "pill" && entry.id !== item.id);
         burst(item.x, item.y, "#ffd84a", 46);
-        tone(720, 0.16, 0.06);
+        rewardSound(650);
         setMessage(`Logo GPP! Dọn màn hình +${18 + cleared * 2}`, 1.5);
         syncHud(); return;
       } else if (item.kind === "coffee") {
-        slowUntil = now + 5000; score += 10; burst(item.x, item.y, "#d98b52", 28); tone(520, 0.12);
+        slowUntil = now + 5000; score += 10; burst(item.x, item.y, "#d98b52", 28); rewardSound(480);
         setMessage("Cà phê: chậm lại 5 giây ☕", 1.5);
-      } else {
-        timeLeft = Math.min(70, timeLeft + 5); score += 8; burst(item.x, item.y, "#ef5c79", 30); tone(620, 0.14);
+      } else if (item.kind === "heart") {
+        timeLeft = Math.min(70, timeLeft + 5); score += 8; burst(item.x, item.y, "#ef5c79", 30); rewardSound(600);
         setMessage("Thêm 5 giây yêu thương ❤️", 1.5);
+      } else if (item.kind === "ambulance") {
+        freezeUntil = now + 3000; score += 10; burst(item.x, item.y, "#20a8cf", 34); rewardSound(560);
+        setMessage("Xe cấp cứu: đóng băng thuốc 3 giây 🚑", 1.7);
+      } else if (item.kind === "magnet") {
+        magnetUntil = now + 5000; magnetX = item.x; magnetY = HEIGHT * 0.52; score += 12; burst(item.x, item.y, "#e55d70", 36); rewardSound(610);
+        setMessage("Nam châm y tế: gom thuốc 5 giây 🧲", 1.7);
+      } else if (item.kind === "spaceship") {
+        const cleared = items.filter((entry) => entry.kind === "pill").length;
+        score += 15 + cleared;
+        items.filter((entry) => entry.kind === "pill").forEach((entry) => burst(entry.x, entry.y, "#66ddff", 10));
+        items = items.filter((entry) => entry.kind !== "pill" && entry.id !== item.id);
+        rewardSound(720); setMessage(`Phi thuyền quét thuốc +${15 + cleared} 🚀`, 1.7); syncHud(); return;
+      } else if (item.kind === "rainbowLogo") {
+        doubleUntil = now + 5000; score += 25; burst(item.x, item.y, `hsl(${now / 8 % 360} 90% 60%)`, 70); victorySound();
+        setMessage("Logo GPP cầu vồng: nhân đôi điểm 5 giây! 🌈", 2);
+      } else if (item.kind === "badPill") {
+        score = Math.max(0, score - 5); burst(item.x, item.y, "#1b2026", 24); penaltySound();
+        setMessage("Thuốc đầu lâu: trừ 5 điểm ☠️", 1.5);
+      } else if (item.kind === "virus") {
+        timeLeft = Math.max(0, timeLeft - 3); burst(item.x, item.y, "#7c4dcc", 26); penaltySound();
+        setMessage("Virus tinh nghịch: trừ 3 giây 🦠", 1.5);
+      } else if (item.kind === "meteor") {
+        combo = 0; shakeUntil = now + 520; burst(item.x, item.y, "#845f4a", 32); penaltySound();
+        setMessage("Thiên thạch làm mất chuỗi combo ☄️", 1.5);
+      } else if (item.kind === "blackhole") {
+        item.hits = (item.hits || 0) + 1;
+        penaltySound();
+        if (item.hits >= 3) {
+          score += 8; burst(item.x, item.y, "#8d70ff", 52); rewardSound(620);
+          items = items.filter((entry) => entry.id !== item.id);
+          setMessage("Đã đóng hố đen! +8 điểm 🌌", 1.5); syncHud(); return;
+        }
+        setMessage(`Đóng hố đen: còn ${3 - item.hits} lần chạm`, 1.1);
+        syncHud(); return;
       }
       items = items.filter((entry) => entry.id !== item.id);
       syncHud();
@@ -325,8 +390,10 @@ export default function DoctorRelaxGame() {
         ctx.strokeStyle = "rgba(0,52,67,.42)"; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.stroke();
         ctx.beginPath(); ctx.moveTo(-item.r * .64, 3); ctx.lineTo(item.r * .64, 3);
         ctx.strokeStyle = "rgba(255,255,255,.42)"; ctx.lineWidth = 1; ctx.stroke();
-        ctx.fillStyle = "white"; ctx.font = `900 ${item.r * .66}px Arial, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.shadowColor = "rgba(0,40,55,.45)"; ctx.shadowBlur = 3; ctx.fillText(String(item.points), 0, -item.r * .28);
+        if (item.kind === "pill") {
+          ctx.fillStyle = "white"; ctx.font = `900 ${item.r * .66}px Arial, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.shadowColor = "rgba(0,40,55,.45)"; ctx.shadowBlur = 3; ctx.fillText(String(item.points), 0, -item.r * .28);
+        }
       } else {
         // Viên nang hai đầu: nửa trắng, nửa màu và đường ráp ở chính giữa.
         const width = item.r * 2.8;
@@ -334,7 +401,7 @@ export default function DoctorRelaxGame() {
         roundedRect(-width / 2, -height / 2, width, height, height / 2);
         ctx.save(); ctx.clip();
         const left = ctx.createLinearGradient(-width / 2, -height / 2, 0, height / 2);
-        left.addColorStop(0, "#ffffff"); left.addColorStop(1, "#dfeef0");
+        left.addColorStop(0, item.kind === "badPill" ? "#4a4f55" : "#ffffff"); left.addColorStop(1, item.kind === "badPill" ? "#101419" : "#dfeef0");
         ctx.fillStyle = left; ctx.fillRect(-width / 2, -height / 2, width / 2, height);
         const right = ctx.createLinearGradient(0, -height / 2, width / 2, height / 2);
         right.addColorStop(0, item.color); right.addColorStop(1, item.color);
@@ -345,36 +412,61 @@ export default function DoctorRelaxGame() {
         ctx.strokeStyle = "rgba(0,55,70,.22)"; ctx.lineWidth = 2; ctx.stroke();
         ctx.beginPath(); ctx.moveTo(0, -height / 2 + 2); ctx.lineTo(0, height / 2 - 2);
         ctx.strokeStyle = "rgba(0,55,70,.28)"; ctx.lineWidth = 2; ctx.stroke();
-        ctx.fillStyle = "white"; ctx.font = `900 ${item.r * .68}px Arial, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.shadowColor = "rgba(0,40,55,.5)"; ctx.shadowBlur = 3; ctx.fillText(String(item.points), width * .25, 1);
+        if (item.kind === "pill") {
+          ctx.fillStyle = "white"; ctx.font = `900 ${item.r * .68}px Arial, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.shadowColor = "rgba(0,40,55,.5)"; ctx.shadowBlur = 3; ctx.fillText(String(item.points), width * .25, 1);
+        }
+      }
+      if (item.kind === "badPill") {
+        ctx.shadowColor = "rgba(0,0,0,.65)"; ctx.shadowBlur = 8; ctx.fillStyle = "#fff"; ctx.font = `900 ${item.r * 1.05}px Arial, sans-serif`;
+        ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("☠", 0, 1);
       }
       ctx.restore();
     }
     function drawSpecial(item: FallingItem) {
       ctx.save(); ctx.translate(item.x, item.y);
-      ctx.shadowColor = item.kind === "logo" ? "rgba(255,204,30,.8)" : "rgba(0,82,106,.3)"; ctx.shadowBlur = 22;
-      if (item.kind === "logo") {
+      const now = performance.now();
+      const isLogo = item.kind === "logo" || item.kind === "rainbowLogo";
+      ctx.shadowColor = item.kind === "rainbowLogo" ? `hsl(${now / 7 % 360} 95% 58%)` : item.kind === "logo" ? "rgba(255,204,30,.8)" : "rgba(0,82,106,.3)"; ctx.shadowBlur = item.kind === "rainbowLogo" ? 34 : 22;
+      if (isLogo) {
         // Giữ nguyên toàn bộ logo người dùng gửi, không cắt chỉ còn chữ GPP.
         roundedRect(-item.r * .96, -item.r * .96, item.r * 1.92, item.r * 1.92, 17);
         ctx.fillStyle = "rgba(255,255,255,.96)"; ctx.fill();
-        ctx.shadowBlur = 0; ctx.strokeStyle = "#f4c430"; ctx.lineWidth = 3; ctx.stroke();
+        ctx.shadowBlur = 0; ctx.strokeStyle = item.kind === "rainbowLogo" ? `hsl(${now / 6 % 360} 95% 55%)` : "#f4c430"; ctx.lineWidth = item.kind === "rainbowLogo" ? 6 : 3; ctx.stroke();
         if (logoImage.complete && logoImage.naturalWidth > 0) {
+          if (item.kind === "rainbowLogo") ctx.filter = `hue-rotate(${now / 10 % 360}deg) saturate(1.8)`;
           ctx.drawImage(logoImage, -item.r * .84, -item.r * .84, item.r * 1.68, item.r * 1.68);
+          ctx.filter = "none";
         } else {
           ctx.font = "bold 19px Arial, sans-serif"; ctx.fillStyle = "#087aa5"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("TRƯỜNG GPP", 0, 0);
         }
+        if (item.kind === "rainbowLogo") {
+          ctx.font = "20px Arial, sans-serif"; ctx.textAlign = "center"; ctx.fillText("🌈", item.r * .7, -item.r * .7);
+        }
+      } else if (item.kind === "blackhole") {
+        const pulse = 1 + Math.sin(now / 120) * .08;
+        const gradient = ctx.createRadialGradient(0, 0, 3, 0, 0, item.r * pulse);
+        gradient.addColorStop(0, "#02030a"); gradient.addColorStop(.42, "#14052f"); gradient.addColorStop(.7, "#704bd4"); gradient.addColorStop(1, "rgba(85,210,255,.1)");
+        ctx.beginPath(); ctx.arc(0, 0, item.r * pulse, 0, Math.PI * 2); ctx.fillStyle = gradient; ctx.fill();
+        ctx.shadowBlur = 0; ctx.strokeStyle = `hsl(${now / 9 % 360} 80% 65%)`; ctx.lineWidth = 5; ctx.stroke();
+        ctx.fillStyle = "white"; ctx.font = "900 17px Arial, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(`${item.hits || 0}/3`, 0, 1);
       } else {
         ctx.beginPath(); ctx.arc(0, 0, item.r, 0, Math.PI * 2);
-        ctx.fillStyle = item.kind === "coffee" ? "#fff1df" : "#ffe4eb"; ctx.fill();
+        const backgrounds: Partial<Record<FallingItem["kind"], string>> = { coffee:"#fff1df", heart:"#ffe4eb", ambulance:"#e7f8ff", magnet:"#fff0f2", spaceship:"#e8f1ff", virus:"#efe5ff", meteor:"#f1e6dc" };
+        ctx.fillStyle = backgrounds[item.kind] || "#eef8fa"; ctx.fill();
         ctx.shadowBlur = 0; ctx.strokeStyle = "rgba(5,112,145,.3)"; ctx.lineWidth = 3; ctx.stroke();
         ctx.font = `${item.r * 1.15}px Arial, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText(item.kind === "coffee" ? "☕" : "❤️", 0, 3);
+        const icons: Partial<Record<FallingItem["kind"], string>> = { coffee:"☕", heart:"❤️", ambulance:"🚑", magnet:"🧲", spaceship:"🚀", virus:"🦠", meteor:"☄️" };
+        ctx.fillText(icons[item.kind] || "✨", 0, 3);
       }
       ctx.restore();
     }
     function drawFrame() {
       ctx.clearRect(0, 0, WIDTH, HEIGHT); drawBackground();
-      items.forEach((item) => item.kind === "pill" ? drawPill(item) : drawSpecial(item));
+      ctx.save();
+      if (performance.now() < shakeUntil) ctx.translate(random(-6, 6), random(-5, 5));
+      items.forEach((item) => item.kind === "pill" || item.kind === "badPill" ? drawPill(item) : drawSpecial(item));
+      ctx.restore();
       for (const particle of particles) {
         ctx.globalAlpha = clamp(particle.life * 2, 0, 1); ctx.beginPath(); ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
         ctx.fillStyle = particle.color; ctx.fill();
@@ -382,7 +474,7 @@ export default function DoctorRelaxGame() {
       ctx.globalAlpha = 1;
     }
     function handlePillCollisions() {
-      const pills = items.filter((item) => item.kind === "pill");
+      const pills = items.filter((item) => item.kind === "pill" || item.kind === "badPill");
       for (let i = 0; i < pills.length; i++) {
         for (let j = i + 1; j < pills.length; j++) {
           const a = pills[i];
@@ -403,10 +495,16 @@ export default function DoctorRelaxGame() {
 
           const relativeSpeed = (b.drift - a.drift) * nx + (b.speed - a.speed) * ny;
           if (relativeSpeed < 0) {
-            const impulse = -(1 + 0.72) * relativeSpeed / 2;
-            a.drift -= impulse * nx; a.speed -= impulse * ny;
-            b.drift += impulse * nx; b.speed += impulse * ny;
-            a.spin -= nx * 0.7; b.spin += nx * 0.7;
+            const massA = a.shape === 0 ? 1 : 1.28;
+            const massB = b.shape === 0 ? 1 : 1.28;
+            const impulse = -(1 + 0.7) * relativeSpeed / (1 / massA + 1 / massB);
+            a.drift -= impulse * nx / massA; a.speed -= impulse * ny / massA;
+            b.drift += impulse * nx / massB; b.speed += impulse * ny / massB;
+            a.spin -= (nx + ny) * 0.85 / massA; b.spin += (nx + ny) * 0.85 / massB;
+            const now = performance.now();
+            if (now - lastCollisionSound > 190 && Math.abs(relativeSpeed) > 35) {
+              lastCollisionSound = now; tone(145 + Math.min(90, Math.abs(relativeSpeed)), 0.035, 0.018, "sine");
+            }
           }
           a.drift = clamp(a.drift, -68, 68); b.drift = clamp(b.drift, -68, 68);
           a.speed = clamp(a.speed, -45, 175); b.speed = clamp(b.speed, -45, 175);
@@ -419,20 +517,60 @@ export default function DoctorRelaxGame() {
       roundElapsed += delta;
       if (timeLeft <= 0) { finishRound(); return; }
       spawnClock -= delta; specialClock -= delta;
+      penaltyClock -= delta;
       if (spawnClock <= 0 && items.length < 18) { spawn("pill"); spawnClock = random(0.55, 0.78); }
       if (specialClock <= 0) {
-        const roll = Math.random();
-        spawn(roll < 0.45 ? "logo" : roll < 0.73 ? "coffee" : "heart"); specialClock = random(8, 12);
-        setMessage(roll < 0.45 ? "Logo GPP xuất hiện!" : roll < 0.73 ? "Cà phê thư giãn xuất hiện!" : "Trái tim cộng thời gian!", 1.4);
+        const rewards: FallingItem["kind"][] = ["logo", "coffee", "heart"];
+        if (tier >= 1) rewards.push("ambulance");
+        if (tier >= 2) rewards.push("magnet");
+        if (tier >= 3) rewards.push("spaceship");
+        if (tier >= 4) rewards.push("rainbowLogo");
+        const reward = rewards[Math.floor(Math.random() * rewards.length)];
+        spawn(reward); specialClock = random(7.5, 11);
+        const rewardNames: Partial<Record<FallingItem["kind"], string>> = { logo:"Logo GPP", coffee:"Cà phê", heart:"Trái tim", ambulance:"Xe cấp cứu", magnet:"Nam châm y tế", spaceship:"Phi thuyền", rainbowLogo:"Logo GPP cầu vồng" };
+        setMessage(`${rewardNames[reward]} xuất hiện!`, 1.4);
+      }
+      if (tier >= 1 && penaltyClock <= 0) {
+        const penalties: FallingItem["kind"][] = ["badPill"];
+        if (tier >= 2) penalties.push("virus");
+        if (tier >= 3) penalties.push("meteor");
+        if (tier >= 4) penalties.push("blackhole");
+        const penalty = penalties[Math.floor(Math.random() * penalties.length)];
+        spawn(penalty); penaltyClock = random(6.5, 9.5);
+        const penaltyNames: Partial<Record<FallingItem["kind"], string>> = { badPill:"Thuốc đầu lâu", virus:"Virus tinh nghịch", meteor:"Thiên thạch", blackhole:"Hố đen quá tải" };
+        setMessage(`Cẩn thận: ${penaltyNames[penalty]}!`, 1.4);
       }
       const slowFactor = now < slowUntil ? 0.48 : 1;
+      const lowGravityFactor = tier >= 3 ? 0.72 : 1;
+      const blackholes = items.filter((entry) => entry.kind === "blackhole");
       for (const item of items) {
-        if (item.kind === "pill") item.speed = Math.min(175, item.speed + 22 * delta);
-        item.y += item.speed * slowFactor * delta; item.x += item.drift * delta; item.rotation += item.spin * delta;
+        const isMedicine = item.kind === "pill" || item.kind === "badPill";
+        if (isMedicine) item.speed = Math.min(175, item.speed + (tier >= 3 ? 10 : 22) * delta);
+        if (now < magnetUntil && item.kind === "pill") {
+          item.drift += clamp((magnetX - item.x) * 0.42 * delta, -18, 18);
+          item.speed += clamp((magnetY - item.y) * 0.2 * delta, -12, 12);
+        }
+        if (blackholes.length && isRewardKind(item.kind)) {
+          const hole = blackholes[0];
+          const dx = hole.x - item.x; const dy = hole.y - item.y; const distance = Math.max(45, Math.hypot(dx, dy));
+          item.drift += dx / distance * 34 * delta; item.speed += dy / distance * 25 * delta;
+        }
+        const freezeFactor = now < freezeUntil && isMedicine ? 0.04 : 1;
+        const floatingDrift = tier >= 3 && isMedicine ? Math.sin(now / 520 + item.id) * 11 : 0;
+        item.y += item.speed * slowFactor * lowGravityFactor * freezeFactor * delta;
+        item.x += (item.drift + floatingDrift) * delta; item.rotation += item.spin * delta;
         if (item.x < item.r) { item.x = item.r; item.drift = Math.abs(item.drift) * 0.8; }
         if (item.x > WIDTH - item.r) { item.x = WIDTH - item.r; item.drift = -Math.abs(item.drift) * 0.8; }
       }
       handlePillCollisions();
+      const escapedBlackholes = items.filter((item) => item.kind === "blackhole" && item.y >= HEIGHT + item.r);
+      for (const hole of escapedBlackholes) {
+        const lostReward = items.find((item) => item.id !== hole.id && isRewardKind(item.kind));
+        if (lostReward) {
+          items = items.filter((item) => item.id !== lostReward.id);
+          penaltySound(); setMessage("Hố đen đã hút mất một vật phẩm thưởng!", 1.7);
+        }
+      }
       items = items.filter((item) => item.y < HEIGHT + item.r);
       if (combo > 0 && now - lastHitAt > 1500) combo = 0;
       if (messageUntil && now > messageUntil) {
