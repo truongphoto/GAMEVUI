@@ -28,6 +28,24 @@ Bản React + Vite đã được chuẩn bị sẵn để chạy trên GitHub Pa
 - 10 giây cuối có thuốc giá trị cao hơn; màn 6 có “Khoảnh khắc vàng” trong 5 giây cuối.
 - Kết quả mỗi màn có hạng Vàng, Bạc, Đồng hoặc Năng lượng xanh; không bắt buộc đạt mục tiêu nên game vẫn thư giãn.
 
+## Sửa điểm rơi V6.1
+
+- “Điểm rơi” là tổng điểm in trên các viên thuốc bắt buộc phải xuất hiện trong màn, không còn là con số ước tính.
+- Mỗi lượt chọn trước một tổng điểm nằm đúng khung của màn; hệ thống chia chính xác tổng đó cho toàn bộ thuốc và thả hết trước khi hết giờ.
+- Cả bệnh viện ban đầu và Cấp 1–4 đều áp dụng cùng bảng 6 màn; tốc độ, nhịp thả và số thuốc tăng dần.
+- Combo, logo và vật phẩm đặc biệt vẫn cộng thêm ngoài tổng điểm thuốc bắt buộc.
+
+## Điều chỉnh V6.2
+
+- Bỏ dòng xác nhận tổng điểm thuốc ở bảng kết thúc để giao diện gọn hơn; cơ chế bắt buộc thả đủ điểm vẫn giữ nguyên.
+
+## Thời gian thưởng V6.3
+
+- Mỗi màn luôn có 60 giây chính; trái tim tích thêm 5 giây, tối đa 10 giây thưởng.
+- Khi 60 giây chính kết thúc, đồng hồ chuyển sang màu hồng và mở riêng “Thời gian thưởng”.
+- Thuốc tiếp tục rơi trong thời gian thưởng và vẫn cộng vào điểm người chơi, nhưng không thuộc ngân sách điểm bắt buộc của màn.
+- Không xuất hiện thêm trái tim trong thời gian thưởng; nhạc nền tăng nhịp nhẹ để tạo cao trào.
+
 ## Giao diện tự động theo thiết bị
 
 - Máy tính: giao diện ngang, hiển thị đầy đủ thông tin và toàn bộ khu chơi.
