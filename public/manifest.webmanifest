@@ -1,0 +1,26 @@
+{
+  "name": "Bác Sĩ Thư Giãn - Trường GPP",
+  "short_name": "Bác Sĩ GPP",
+  "description": "Trò chơi giải lao 60 giây dành cho bác sĩ, nâng cấp Bệnh viện GPP đến cấp Siêu cấp.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#e7f4f6",
+  "theme_color": "#087aa5",
+  "icons": [
+    {
+      "src": "./logo-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./logo-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
