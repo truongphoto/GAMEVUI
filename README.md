@@ -41,10 +41,18 @@ Bản React + Vite đã được chuẩn bị sẵn để chạy trên GitHub Pa
 
 ## Thời gian thưởng V6.3
 
-- Mỗi màn luôn có 60 giây chính; trái tim tích thêm 5 giây, tối đa 10 giây thưởng.
+- Mỗi màn luôn có 60 giây chính; trái tim tích thêm thời gian thưởng (giới hạn đã được nâng lên 15 giây ở V6.4).
 - Khi 60 giây chính kết thúc, đồng hồ chuyển sang màu hồng và mở riêng “Thời gian thưởng”.
 - Thuốc tiếp tục rơi trong thời gian thưởng và vẫn cộng vào điểm người chơi, nhưng không thuộc ngân sách điểm bắt buộc của màn.
 - Không xuất hiện thêm trái tim trong thời gian thưởng; nhạc nền tăng nhịp nhẹ để tạo cao trào.
+
+## Thuốc có trọng lượng và Tim Sao Băng V6.4
+
+- Mọi viên thuốc chỉ có giá trị từ 1 đến 10 điểm; thuốc càng nhiều điểm càng nặng và rơi nhanh, từ 0,8x đến 2x.
+- Trọng lượng điểm được đưa vào va chạm vật lý: viên nặng đẩy viên nhẹ lệch hướng rõ hơn.
+- Ngân sách điểm được chia thành 80% trong 50 giây đầu và 20% trong 10 giây cuối; hệ thống giữ thuốc xuất hiện liên tục, không để trống màn hình gần hết giờ.
+- Mỗi màn có đúng hai tim thường và một Tim Sao Băng, mỗi tim cộng 5 giây, tổng thời gian thưởng tối đa 15 giây.
+- Tim Sao Băng là vật phẩm nhanh nhất game, bay zíc-zắc, có cảnh báo và vùng chạm hỗ trợ để khó nhưng vẫn bắt được.
 
 ## Giao diện tự động theo thiết bị
 
