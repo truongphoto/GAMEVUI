@@ -1,35 +1,25 @@
-GAMEVUI V2.0 - VALIDATION REPORT
-Date: 2026-08-23
+GAMEVUI Visual Pro v2.1 – VALIDATION
 
-PASS - Source checks
-- TypeScript/TSX parser: PASS (TypeScript transpile diagnostics).
-- TypeScript semantic check with local React stubs: PASS.
-- package.json / package-lock.json / manifest.webmanifest: valid JSON.
-- Service worker cache bumped to gpp-relax-v2-0-0.
-- GitHub Pages workflow retained: npm ci -> npm run build -> deploy-pages.
+Mục tiêu: giữ nguyên gameplay gốc, chỉ nâng UI/FX và mobile landscape fullscreen.
 
-V2 IMPLEMENTATION CHECKLIST
-1. Professional game-style HUD: DONE.
-2. 60-second pacing in 5 phases: DONE.
-3. Varied item patterns: DONE (line/V/arc/zigzag/cluster/spiral/cascade/mix).
-4. Emergency Moment: DONE (~5.2s).
-5. GPP as special collectible: DONE (separate schedule, unique visual/audio/reward).
-6. Combo reward feedback: DONE (5/10/20/30 milestones).
-7. Five hospital tier identities: DONE.
-8. Six stage gameplay profiles: DONE.
-9. Patient + ECG layer: DONE; no hard fail condition.
-10. Unified special-item canvas art: DONE for Focus/heart/ambulance/magnet/spaceship/virus/meteor/GPP.
-11. Subtle physics/effects: DONE.
-12. Tiered sound feedback: DONE.
-13. Slowdown coffee replaced by Focus: DONE; Focus does not reduce game speed.
-14. Empty-screen prevention: DONE (minimum refill behavior).
-15. Bad-item penalties softened: DONE.
-16. Rich results screen: DONE (score/combo/accuracy/GPP/patient/best).
-17. Cinematic stage intro/camera: DONE.
-18. Separate PC/mobile layouts: DONE; dedicated landscape override added while portrait remains supported.
-19. Rare memorable events: DONE (energy rain/rescue/space/research/GPP wave).
-20. Relaxing low-pressure philosophy preserved: DONE.
+PASS - SCENE_BALANCE
+PASS - spawn logic
+PASS - pointer hit logic
+PASS - round reset / scoring actions
+PASS - main update gameplay
+PASS - const ROUND_SECONDS = 60;
+PASS - const ZONES = [
+PASS - TSX parse/syntax bằng TypeScript transpileModule.
+PASS - JSON: package.json, package-lock.json, manifest.webmanifest.
+PASS - CSS cân bằng dấu ngoặc.
+PASS - PWA orientation = landscape; display_override ưu tiên fullscreen.
+PASS - Mobile có màn nhắc xoay ngang và nút fullscreen trong game.
 
-LIMITATION OF THIS VALIDATION ENVIRONMENT
-- Full `npm ci && npm run build` could not complete in this container because external npm package downloads were unavailable/timed out.
-- The repository's GitHub Actions workflow remains intact and will run the real dependency install/build on GitHub.
+Lưu ý môi trường kiểm tra: npm ci không hoàn tất vì registry package không có đầy đủ cache/kết nối bị timeout; do đó không tạo dist tại đây. Workflow GitHub Pages gốc vẫn được giữ nguyên và sẽ npm ci + build trên GitHub.
+
+Thay đổi hiển thị:
+- HUD/glass UI chuyên nghiệp hơn.
+- Canvas mobile landscape toàn màn hình khi đang chơi.
+- Ánh sáng nền, item trail, vignette, sweep ánh sáng và combo glow nhẹ.
+- Điều khiển nhanh mobile: nhạc, hiệu ứng, tạm dừng, fullscreen.
+- Safe-area hỗ trợ tai thỏ / cạnh màn hình.

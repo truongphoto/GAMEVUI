@@ -1,10 +1,9 @@
-const CACHE_NAME = "gpp-relax-v2-0-0";
+const CACHE_NAME = "gpp-relax-visual-pro-v2-1";
 const BASE = new URL("./", self.registration.scope);
 const CORE_FILES = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
-  "./version.json",
   "./logo-icon.png",
   "./logo-icon-192.png",
   "./logo-icon-512.png",
@@ -21,11 +20,7 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil((async () => {
-    const keys = await caches.keys();
-    await Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)));
-    await self.clients.claim();
-  })());
+  event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))));
 });
 
 self.addEventListener("message", (event) => {

@@ -1,14 +1,14 @@
 {
   "name": "Bác Sĩ Thư Giãn - Trường GPP",
   "short_name": "Bác Sĩ GPP",
-  "description": "GAMEVUI V2 - Bác Sĩ Thư Giãn GPP: game arcade y khoa 60 giây với combo, Emergency Moment, bệnh nhân ECG, GPP đặc biệt và 5 cấp bệnh viện.",
+  "description": "Trò chơi giải lao 60 giây dành cho bác sĩ, nâng cấp Bệnh viện GPP đến cấp Siêu cấp.",
   "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "orientation": "any",
-  "background_color": "#e7f4f6",
-  "theme_color": "#075f70",
+  "orientation": "landscape",
+  "background_color": "#061d27",
+  "theme_color": "#061d27",
   "icons": [
     {
       "src": "./logo-icon-192.png",
@@ -22,5 +22,9 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
+  ],
+  "display_override": [
+    "fullscreen",
+    "standalone"
   ]
 }
