@@ -1,10 +1,33 @@
-# Bác Sĩ Thư Giãn - Trường GPP
+# Bác Sĩ Thư Giãn V2 - Trường GPP
 
-Bản React + Vite đã được chuẩn bị sẵn để chạy trên GitHub Pages. Game gồm bệnh viện ban đầu, 4 cấp nâng cấp, 6 màn mỗi chặng, âm thanh, vật lý thuốc và màn chúc mừng sau mỗi cấp.
+Bản React + Vite đã được chuẩn bị sẵn để chạy trên GitHub Pages. V2 nâng game từ một trò chạm-vật-phẩm đơn giản thành arcade y khoa thư giãn: 5 cấp bệnh viện, 6 màn mỗi chặng, bệnh nhân ECG, combo, Emergency Moment, GPP đặc biệt, pattern vật phẩm, sự kiện hiếm và màn kết quả chuyên nghiệp hơn.
+
+## GAMEVUI V2.0 - 20 hướng nâng cấp đã triển khai
+
+- HUD được làm gọn theo phong cách game; lộ trình 5 cấp chỉ hiện ở màn chọn/kết quả thay vì che gameplay.
+- Một ván 60 giây có 5 nhịp rõ ràng từ làm quen đến cao trào và “5 giây vàng”.
+- Thuốc xuất hiện theo line, chữ V, vòng cung, ziczag, cụm, xoáy và cascade thay vì chỉ rơi ngẫu nhiên đơn lẻ.
+- Emergency Moment kéo dài khoảng 5 giây, có cụm thuốc cứu viện và banner/âm thanh riêng.
+- Logo GPP được tách thành vật phẩm đặc biệt: hiếm hơn, có halo/quỹ đạo sáng, hiệu ứng nhận thưởng giữa màn hình và quyền lợi tổng hợp.
+- Combo có mốc NICE / GREAT / AMAZING / GPP MASTER cùng âm thanh tăng cao độ.
+- 5 cấp có cơ chế riêng: Hiện đại có cứu viện/thuốc lỗi; Tương lai có nam châm/virus; Vũ trụ có trọng lực nhẹ/phi thuyền/thiên thạch; Siêu cấp có GPP cầu vồng/hố đen.
+- 6 màn có profile gameplay riêng: Cấp cứu, Nhi, Phẫu thuật, Nội trú, Nghiên cứu và Toàn viện.
+- Thêm bệnh nhân ECG: bắt thuốc tốt giúp thanh ổn định tăng, vật xấu chỉ gây ảnh hưởng nhẹ và không tạo cảm giác thua nặng.
+- Bộ icon đặc biệt được vẽ lại bằng canvas đồng bộ hơn thay vì phụ thuộc hoàn toàn vào emoji.
+- Giữ vật lý rơi/va chạm, bổ sung halo, trail, camera intro, event banner, hạt sáng và rung màn nhẹ.
+- Âm thanh thưởng/phạt/combo/GPP có nhịp khác nhau.
+- Cà phê cũ được đổi vai trò thành **Focus 5 giây**: tăng vùng bắt và làm vật phẩm tốt nổi bật, **không làm chậm tốc độ game**.
+- Hệ thống tự bù vật phẩm để tránh màn hình trống.
+- Vật xấu được giảm độ phạt: chủ yếu giảm combo, trừ ít điểm hoặc rất ít thời gian.
+- Kết quả hiển thị Điểm, Combo cao nhất, Chính xác, số GPP, tình trạng bệnh nhân và Kỷ lục.
+- Camera bệnh viện có intro tên khoa và giữ chuyển cảnh toàn viện/nâng cấp.
+- PC và mobile có layout riêng; mobile landscape có bố cục ngang riêng, portrait vẫn tiếp tục hỗ trợ.
+- Có sự kiện hiếm như Mưa năng lượng, Đoàn cứu viện, Tiếp tế vũ trụ và GPP Golden Wave.
+- Tinh thần game giữ nguyên: **Chơi vui · Nghỉ ngắn · Không áp lực**.
 
 ## Cơ chế V4
 
-- Logo GPP thường, cà phê và trái tim xuất hiện xuyên suốt.
+- Logo GPP, Focus và trái tim xuất hiện xuyên suốt; ở V2 logo GPP có lịch xuất hiện riêng và không còn bị trộn quá dày với vật phẩm thưởng thường.
 - Cấp 1 thêm xe cấp cứu và thuốc đầu lâu.
 - Cấp 2 giữ vật phẩm cũ, thêm nam châm và virus.
 - Cấp 3 giữ toàn bộ vật phẩm, thêm phi thuyền, trọng lực nhẹ và thiên thạch.

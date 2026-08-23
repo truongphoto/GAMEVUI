@@ -1,0 +1,6 @@
+{
+  "version": "2.0.0",
+  "build": "gamevui-v2",
+  "released": "2026-08-23",
+  "notes": "V2 triển khai 20 phương án: UI game, nhịp 60s, pattern vật phẩm, Emergency Moment, GPP đặc biệt, combo, ECG bệnh nhân, 5 cấp/6 màn khác nhau, Focus thay giảm tốc, sự kiện hiếm, kết quả nâng cao và layout PC/mobile."
+}
