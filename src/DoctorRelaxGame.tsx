@@ -688,7 +688,7 @@ export default function DoctorRelaxGame() {
       if (item.kind === "pill") {
         const strength = .08 + item.points * .008;
         const glow = ctx.createRadialGradient(0,0,item.r*.5,0,0,item.r*1.65);
-        glow.addColorStop(0, "rgba(255,255,255,.16)"); glow.addColorStop(.48, color.replace ? color : item.color); glow.addColorStop(1, "rgba(255,255,255,0)");
+        glow.addColorStop(0, "rgba(255,255,255,.16)"); glow.addColorStop(.48, color); glow.addColorStop(1, "rgba(255,255,255,0)");
         ctx.globalAlpha = strength; ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(0,0,item.r*1.65*pulse,0,Math.PI*2); ctx.fill();
         if (item.points >= 7) { ctx.globalAlpha=.34; ctx.strokeStyle="#fff3a3"; ctx.lineWidth=2; ctx.setLineDash([7,7]); ctx.rotate(now/700); ctx.beginPath(); ctx.arc(0,0,item.r*1.28,0,Math.PI*2); ctx.stroke(); }
       } else if (item.kind === "badPill") {
