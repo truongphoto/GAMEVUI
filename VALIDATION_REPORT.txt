@@ -1,51 +1,45 @@
-GAMEVUI Visual Pro v2.2 – Mobile Landscape + Item FX
-Date: 2026-08-23
+GAMEVUI Visual Pro v2.3 – True Fullscreen Mobile Fix
+Ngày: 2026-08-23
 
-PASS – Gameplay preserved
-- spawn(): identical to v2.1
-- hitItem(): identical to v2.1
-- finishRound(): identical to v2.1
-- startRound(): identical to v2.1
-- handlePillCollisions(): identical to v2.1
-- update(): identical to v2.1
-- onPointer(): identical to v2.1
-=> Không đổi điểm, thời gian, tỷ lệ rơi, luật chơi, 5 cấp, 6 màn hay xử lý chạm.
+MỤC TIÊU
+- Giữ nguyên gameplay gốc.
+- Sửa dứt điểm lỗi mobile ngang chỉ hiển thị khoảng 1/3 bên trái.
+- Hiển thị đủ thông tin khi chơi.
+- Làm việc cài đặt / vào toàn màn hình dễ hơn.
 
-PASS – Mobile landscape rebuilt
-- Không còn HUD/time/status chồng trực tiếp lên canvas.
-- Bố cục cố định: HUD 6 thông tin / thanh thời gian / canvas / status.
-- Hiển thị đủ Cấp bệnh viện, Màn, Điểm + mục tiêu, Thời gian, Combo, Kỷ lục.
-- Nút nhanh chỉ xuất hiện trong lúc đang chơi.
-- Mobile portrait vẫn hiển thị yêu cầu xoay ngang.
-- Canvas nội bộ lấy tỷ lệ theo vùng chơi sau khi trừ chrome HUD/status.
+ĐÃ SỬA
+1. Canvas không còn dùng cố định kích thước lấy ở thời điểm trang vừa mở.
+2. Canvas tự đo lại theo vùng chơi thật sau resize / xoay máy / fullscreen / visual viewport thay đổi.
+3. Thêm ResizeObserver cho vùng canvas để tự đồng bộ khi layout đổi kích thước.
+4. Khi chơi trên mobile ngang, game-card dùng position:fixed + 100dvw x 100dvh, tách khỏi grid desktop.
+5. Canvas dùng đúng 100% chiều rộng và chiều cao vùng chơi; không còn max-width/aspect-ratio desktop chi phối.
+6. HUD mobile đổi thành 2 hàng x 3 ô để đọc đủ: Cấp bệnh viện / Màn / Điểm / Thời gian / Chuỗi / Kỷ lục.
+7. Thanh thời gian nằm riêng, không chồng canvas.
+8. Thanh trạng thái nằm riêng phía dưới.
+9. Nút Nhạc / Hiệu ứng / Pause / Fullscreen chuyển ra khỏi canvas, không che vật phẩm.
+10. Menu mobile có nút Cài ứng dụng và Toàn màn hình ngay trong màn chào.
+11. Manifest chuyển display = fullscreen, vẫn fallback standalone.
+12. Service Worker đổi cache sang gpp-relax-visual-pro-v2-3 để tránh máy giữ CSS cũ.
 
-Mobile layout calculations checked:
-- 640x360 -> canvas 640x289, HUD cell ~107px
-- 667x375 -> canvas 667x304, HUD cell ~111px
-- 740x360 -> canvas 740x289, HUD cell ~123px
-- 812x375 -> canvas 812x304, HUD cell ~135px
-- 844x390 -> canvas 844x319, HUD cell ~141px
-- 896x414 -> canvas 896x334, HUD cell ~149px
-- 932x430 -> canvas 932x350, HUD cell ~155px
+KIỂM TRA GIỮ NGUYÊN GAMEPLAY SO VỚI v2.2
+PASS – các hàm sau không thay đổi nội dung:
+- spawn
+- hitItem
+- update
+- onPointer
+- handlePillCollisions
 
-PASS – Item visual effects added
-- Thuốc thường: glow mềm; thuốc điểm cao có vòng sáng chuyển động.
-- GPP / GPP cầu vồng: halo kép quay, hạt sáng quỹ đạo, trail.
-- Cà phê: hơi nóng chuyển động.
-- Tim / Tim Sao Băng: pulse + sparkle.
-- Xe cấp cứu: đèn đỏ/xanh nhấp nháy.
-- Nam châm: vòng từ trường.
-- Phi thuyền: exhaust trail.
-- Virus: vòng cảnh báo quay.
-- Thiên thạch: đuôi lửa.
-- Thuốc xấu: vòng cảnh báo đỏ.
-- Burst khi chạm vật phẩm giữ nguyên và tiếp tục hoạt động.
+LƯU Ý BUILD
+- Đã kiểm tra cấu trúc source và phần thay đổi bằng so sánh trực tiếp.
+- Không hoàn tất npm build trong môi trường hiện tại vì bộ node_modules được tải dở và thiếu @types/react / @types/react-dom.
+- Workflow GitHub Pages hiện có của dự án vẫn có thể cài dependencies và build trên GitHub.
 
-PASS – Static validation
-- DoctorRelaxGame.tsx transpile syntax: PASS
-- main.tsx transpile syntax: PASS
-- CSS brace balance: PASS
-- Service Worker cache bumped to gpp-relax-visual-pro-v2-2
-
-NOTE
-- Full npm/Vite build was not executed in this environment because the required Vite package was not available in the local npm cache and external npm fetch timed out. GitHub Actions/Pages can install dependencies normally from package-lock.json.
+KÍCH THƯỚC MOBILE MỤC TIÊU
+- 640x360 -> canvas ~640x266
+- 667x375 -> canvas ~667x281
+- 740x360 -> canvas ~740x266
+- 812x375 -> canvas ~812x281
+- 844x390 -> canvas ~844x296
+- 896x414 -> canvas ~896x320
+- 932x430 -> canvas ~932x336
+Canvas luôn sử dụng toàn bộ chiều ngang viewport.

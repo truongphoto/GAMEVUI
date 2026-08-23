@@ -426,3 +426,85 @@ body { background:radial-gradient(circle at 15% 0%,rgba(73,199,164,.22),transpar
   .phase-paused .game-overlay { z-index:45; }
   .phase-idle .game-overlay,.phase-finished .game-overlay { z-index:45; }
 }
+
+/* ===== Visual Pro v2.3 · TRUE mobile fullscreen fix ===== */
+.welcome-quick-actions { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:9px; }
+.welcome-quick-actions .secondary-button { margin-top:0; }
+
+@media (orientation:landscape) and (max-height:600px), (orientation:landscape) and (pointer:coarse) {
+  html, body, #root { position:fixed!important; inset:0!important; width:100dvw!important; height:100dvh!important; min-width:100dvw!important; min-height:100dvh!important; max-width:none!important; max-height:none!important; margin:0!important; padding:0!important; overflow:hidden!important; }
+  #root { contain:layout size style; }
+  .site-shell { position:fixed!important; inset:0!important; width:100dvw!important; height:100dvh!important; min-width:0!important; min-height:0!important; max-width:none!important; margin:0!important; padding:0!important; overflow:hidden!important; display:block!important; }
+
+  /* Khi CHƠI: toàn bộ game phủ đúng viewport, không kế thừa grid desktop. */
+  .phase-playing .game-card,
+  .phase-paused .game-card,
+  .phase-reveal .game-card {
+    position:fixed!important; inset:0!important; z-index:10!important;
+    width:100dvw!important; height:100dvh!important; min-width:100dvw!important; min-height:100dvh!important;
+    max-width:none!important; max-height:none!important; margin:0!important; padding:0!important;
+    display:grid!important; grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:64px 4px minmax(0,1fr) 26px!important;
+    overflow:hidden!important; border:0!important; border-radius:0!important; background:#061d27!important; box-shadow:none!important;
+  }
+  .phase-playing .topbar,.phase-paused .topbar,.phase-reveal .topbar { display:none!important; }
+
+  /* HUD 2 hàng x 3: đọc đủ thông tin, không ép 6 ô li ti trên một hàng. */
+  .phase-playing .hud,.phase-paused .hud,.phase-reveal .hud {
+    grid-row:1!important; width:100dvw!important; height:64px!important; padding:max(3px,env(safe-area-inset-top)) max(6px,env(safe-area-inset-right)) 3px max(6px,env(safe-area-inset-left))!important;
+    display:grid!important; grid-template-columns:repeat(3,minmax(0,1fr))!important; grid-template-rows:repeat(2,minmax(0,1fr))!important;
+    gap:3px!important; margin:0!important; background:linear-gradient(90deg,#052c39,#075765 52%,#052c39)!important;
+  }
+  .phase-playing .hud-item,.phase-paused .hud-item,.phase-reveal .hud-item,
+  .phase-playing .hud-item.tier,.phase-playing .hud-item.best,.phase-paused .hud-item.tier,.phase-paused .hud-item.best,.phase-reveal .hud-item.tier,.phase-reveal .hud-item.best {
+    display:flex!important; height:auto!important; min-height:0!important; padding:2px 4px!important; flex-direction:row!important; align-items:center!important; justify-content:center!important; gap:5px!important; overflow:hidden!important; border-radius:7px!important;
+  }
+  .phase-playing .hud-item span,.phase-paused .hud-item span,.phase-reveal .hud-item span { width:auto!important; flex:0 1 auto!important; font-size:clamp(7px,1.6vw,9px)!important; overflow:hidden!important; white-space:nowrap!important; text-overflow:ellipsis!important; }
+  .phase-playing .hud-item strong,.phase-paused .hud-item strong,.phase-reveal .hud-item strong { flex:0 0 auto!important; font-size:clamp(12px,2.8vw,16px)!important; }
+  .phase-playing .hud-item.score-target,.phase-paused .hud-item.score-target,.phase-reveal .hud-item.score-target { flex-direction:row!important; }
+
+  .phase-playing .time-track,.phase-paused .time-track,.phase-reveal .time-track { grid-row:2!important; width:100dvw!important; height:4px!important; margin:0!important; }
+  .phase-playing .canvas-wrap,.phase-paused .canvas-wrap,.phase-reveal .canvas-wrap {
+    grid-row:3!important; position:relative!important; inset:auto!important; width:100dvw!important; height:100%!important; min-width:0!important; min-height:0!important; max-width:none!important; max-height:none!important; margin:0!important; padding:0!important; overflow:hidden!important; border:0!important; border-radius:0!important;
+  }
+  .phase-playing .game-canvas,.phase-paused .game-canvas,.phase-reveal .game-canvas {
+    position:absolute!important; inset:0!important; display:block!important; width:100%!important; height:100%!important; min-width:100%!important; min-height:100%!important; max-width:none!important; max-height:none!important; aspect-ratio:auto!important; object-fit:fill!important; margin:0!important; padding:0!important;
+  }
+  .phase-playing .status-row,.phase-paused .status-row,.phase-reveal .status-row {
+    grid-row:4!important; width:100dvw!important; height:26px!important; min-height:26px!important; margin:0!important; padding:3px max(7px,env(safe-area-inset-right)) 3px max(7px,env(safe-area-inset-left))!important;
+  }
+
+  /* MENU/CÀI ĐẶT: vẫn full chiều ngang nhưng để nút Cài ứng dụng hiển thị rõ. */
+  .phase-idle .game-card,.phase-finished .game-card {
+    position:fixed!important; inset:0!important; width:100dvw!important; height:100dvh!important; max-width:none!important; max-height:none!important; margin:0!important; padding:0!important; border:0!important; border-radius:0!important; overflow:hidden!important;
+  }
+  .phase-idle .hud,.phase-idle .time-track,.phase-idle .status-row,.phase-finished .hud,.phase-finished .time-track,.phase-finished .status-row { display:none!important; }
+  .phase-idle .canvas-wrap,.phase-finished .canvas-wrap { position:absolute!important; inset:0!important; width:100dvw!important; height:100dvh!important; max-width:none!important; margin:0!important; border-radius:0!important; }
+  .phase-idle .game-canvas,.phase-finished .game-canvas { position:absolute!important; inset:0!important; width:100%!important; height:100%!important; aspect-ratio:auto!important; }
+  .phase-idle .game-overlay,.phase-finished .game-overlay { z-index:50!important; padding:10px max(54px,calc(env(safe-area-inset-right) + 10px)) 10px max(12px,env(safe-area-inset-left))!important; }
+  .phase-idle .welcome-panel h2 { font-size:clamp(21px,4.5vw,32px)!important; }
+  .phase-idle .welcome-panel p { font-size:10px!important; }
+  .phase-idle .pulse-icon { width:42px!important; height:42px!important; font-size:23px!important; }
+  .phase-idle .primary-button { min-width:200px!important; min-height:38px!important; margin-top:7px!important; }
+  .welcome-quick-actions { display:flex!important; margin-top:7px!important; }
+  .welcome-quick-actions .secondary-button { width:auto!important; min-width:145px!important; margin:0!important; padding:8px 12px!important; color:white!important; border:1px solid rgba(255,255,255,.28)!important; background:rgba(3,57,70,.70)!important; font-size:11px!important; }
+}
+
+@media (orientation:landscape) and (max-height:390px) {
+  .phase-playing .game-card,.phase-paused .game-card,.phase-reveal .game-card { grid-template-rows:58px 3px minmax(0,1fr) 23px!important; }
+  .phase-playing .hud,.phase-paused .hud,.phase-reveal .hud { height:58px!important; }
+  .phase-playing .status-row,.phase-paused .status-row,.phase-reveal .status-row { height:23px!important; min-height:23px!important; }
+}
+
+/* v2.3 controls nằm ngoài canvas: không che vật phẩm. */
+@media (orientation:landscape) and (max-height:600px), (orientation:landscape) and (pointer:coarse) {
+  .phase-playing .mobile-game-controls,.phase-paused .mobile-game-controls,.phase-reveal .mobile-game-controls {
+    position:absolute!important; z-index:45!important; right:max(5px,env(safe-area-inset-right))!important; bottom:2px!important;
+    display:flex!important; flex-direction:row!important; gap:4px!important; height:22px!important; margin:0!important;
+  }
+  .phase-playing .mobile-game-controls button,.phase-paused .mobile-game-controls button,.phase-reveal .mobile-game-controls button {
+    width:24px!important; height:22px!important; min-width:24px!important; min-height:22px!important; padding:0!important; border-radius:6px!important; font-size:11px!important; box-shadow:none!important;
+  }
+  .phase-playing .status-row,.phase-paused .status-row,.phase-reveal .status-row { padding-right:max(116px,calc(env(safe-area-inset-right) + 108px))!important; }
+  .phase-idle .mobile-game-controls,.phase-finished .mobile-game-controls { display:none!important; }
+}

@@ -220,8 +220,8 @@ export default function DoctorRelaxGame() {
     const landscapeViewportW = Math.max(window.innerWidth, window.innerHeight);
     const landscapeViewportH = Math.max(240, Math.min(window.innerWidth, window.innerHeight) - 76);
     const playableAspect = clamp(landscapeViewportW / landscapeViewportH, MOBILE_WIDTH / MOBILE_HEIGHT, 3.15);
-    const WIDTH = mobileLayout ? Math.round(MOBILE_HEIGHT * playableAspect) : DESKTOP_WIDTH;
-    const HEIGHT = mobileLayout ? MOBILE_HEIGHT : DESKTOP_HEIGHT;
+    let WIDTH = mobileLayout ? Math.round(MOBILE_HEIGHT * playableAspect) : DESKTOP_WIDTH;
+    let HEIGHT = mobileLayout ? MOBILE_HEIGHT : DESKTOP_HEIGHT;
 
     const mapImages = HOSPITAL_TIERS.map((hospitalTier) => {
       const image = new Image();
@@ -309,10 +309,24 @@ export default function DoctorRelaxGame() {
       if (musicTimer !== null) { window.clearInterval(musicTimer); musicTimer = null; }
     }
     function resizeCanvas() {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      gameCanvas.width = WIDTH * dpr;
-      gameCanvas.height = HEIGHT * dpr;
+      const rect = gameCanvas.getBoundingClientRect();
+      const cssW = Math.max(1, rect.width || window.innerWidth);
+      const cssH = Math.max(1, rect.height || window.innerHeight);
+      if (mobileLayout) {
+        // Luôn lấy tỷ lệ THỰC của vùng chơi sau khi xoay ngang / vào fullscreen.
+        // Tránh lỗi canvas giữ kích thước từ lúc máy còn dọc nên chỉ vẽ ở 1 phần bên trái.
+        const liveAspect = clamp(cssW / cssH, 1.45, 3.65);
+        HEIGHT = MOBILE_HEIGHT;
+        WIDTH = Math.round(HEIGHT * liveAspect);
+      } else {
+        WIDTH = DESKTOP_WIDTH;
+        HEIGHT = DESKTOP_HEIGHT;
+      }
+      const dpr = Math.min(window.devicePixelRatio || 1, mobileLayout ? 1.5 : 2);
+      gameCanvas.width = Math.max(1, Math.round(WIDTH * dpr));
+      gameCanvas.height = Math.max(1, Math.round(HEIGHT * dpr));
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      for (const item of items) item.x = clamp(item.x, item.r + 8, WIDTH - item.r - 8);
     }
     function spawn(kind: FallingItem["kind"] = "pill", forcedPoints?: number) {
       const isLogo = kind === "logo" || kind === "rainbowLogo";
@@ -931,9 +945,18 @@ export default function DoctorRelaxGame() {
     function onVisibilityChange() {
       if (document.hidden && phase === "playing") { phase = "paused"; stopMusic(); message = "Game tự tạm dừng để bạn nghỉ một chút"; syncHud(); }
     }
-    resizeCanvas(); gameCanvas.addEventListener("pointerdown", onPointer); document.addEventListener("visibilitychange", onVisibilityChange);
+    const queueResize = () => { window.requestAnimationFrame(() => { resizeCanvas(); window.requestAnimationFrame(resizeCanvas); }); };
+    resizeCanvas();
+    window.addEventListener("resize", queueResize);
+    window.addEventListener("orientationchange", queueResize);
+    window.visualViewport?.addEventListener("resize", queueResize);
+    document.addEventListener("fullscreenchange", queueResize);
+    const canvasResizeObserver = typeof ResizeObserver !== "undefined" ? new ResizeObserver(queueResize) : null;
+    if (gameCanvas.parentElement) canvasResizeObserver?.observe(gameCanvas.parentElement);
+    gameCanvas.addEventListener("pointerdown", onPointer);
+    document.addEventListener("visibilitychange", onVisibilityChange);
     syncHud(); animationFrame = requestAnimationFrame(loop);
-    return () => { cancelAnimationFrame(animationFrame); if (revealTimer !== null) window.clearTimeout(revealTimer); stopMusic(); gameCanvas.removeEventListener("pointerdown", onPointer); document.removeEventListener("visibilitychange", onVisibilityChange); audioContext?.close(); };
+    return () => { cancelAnimationFrame(animationFrame); if (revealTimer !== null) window.clearTimeout(revealTimer); stopMusic(); window.removeEventListener("resize", queueResize); window.removeEventListener("orientationchange", queueResize); window.visualViewport?.removeEventListener("resize", queueResize); document.removeEventListener("fullscreenchange", queueResize); canvasResizeObserver?.disconnect(); gameCanvas.removeEventListener("pointerdown", onPointer); document.removeEventListener("visibilitychange", onVisibilityChange); audioContext?.close(); };
   }, []);
 
   const result = getResult(hud.score);
@@ -980,16 +1003,14 @@ export default function DoctorRelaxGame() {
         <div className={`time-track ${hud.bonusPhase ? "bonus" : ""}`} aria-label={`Còn ${hud.time} giây`}><span style={{ width: `${progress}%` }} /></div>
         <div className="canvas-wrap">
           <canvas ref={canvasRef} className="game-canvas" aria-label="Khu vực chơi, chạm vào các viên thuốc" />
-          <div className="mobile-game-controls" aria-label="Điều khiển nhanh">
-            <button type="button" onClick={() => actionsRef.current.toggleMusic()} aria-label={hud.music ? "Tắt nhạc nền" : "Bật nhạc nền"}>{hud.music ? "🎵" : "🎼"}</button>
-            <button type="button" onClick={() => actionsRef.current.toggleSound()} aria-label={hud.sound ? "Tắt hiệu ứng" : "Bật hiệu ứng"}>{hud.sound ? "🔊" : "🔇"}</button>
-            <button type="button" onClick={() => actionsRef.current.pause()} disabled={hud.phase === "idle" || hud.phase === "reveal" || hud.phase === "finished"} aria-label={hud.phase === "paused" ? "Tiếp tục" : "Tạm dừng"}>{hud.phase === "paused" ? "▶" : "Ⅱ"}</button>
-            <button type="button" onClick={() => void enterImmersiveMode()} aria-label="Toàn màn hình">⛶</button>
-          </div>
           {hud.phase === "idle" && <div className="game-overlay welcome-panel">
             <div className="pulse-icon">💊</div><p className="overlay-kicker">Luật chơi chỉ có một dòng</p><h2>Chạm thuốc để ghi điểm</h2>
             <p>Không có thua. Chỉ có 60 giây vui vẻ dành cho bạn.</p>
-            <button className="primary-button" onClick={() => { void enterImmersiveMode(); actionsRef.current.start(); }}>Bắt đầu thư giãn</button>
+            <button className="primary-button" onClick={() => { void enterImmersiveMode(); actionsRef.current.start(); }}>▶ Bắt đầu thư giãn</button>
+            <div className="welcome-quick-actions">
+              {!installed && <button type="button" className="secondary-button mobile-install-cta" onClick={installGame}>📲 Cài ứng dụng</button>}
+              <button type="button" className="secondary-button mobile-fullscreen-cta" onClick={() => void enterImmersiveMode()}>⛶ Toàn màn hình</button>
+            </div>
             <span className="microcopy">Logo GPP dọn màn hình · ☕ làm chậm · ❤️ thêm 5 giây</span>
           </div>}
           {hud.phase === "paused" && <div className="game-overlay compact-panel">
@@ -1022,6 +1043,12 @@ export default function DoctorRelaxGame() {
           </div>}
         </div>
         <div className="status-row" aria-live="polite"><span className="live-dot" /><strong>{hud.message}</strong><span>{HOSPITAL_TIERS[hud.tier].name} · {ZONES[hud.zone]}</span></div>
+        <div className="mobile-game-controls" aria-label="Điều khiển nhanh">
+          <button type="button" onClick={() => actionsRef.current.toggleMusic()} aria-label={hud.music ? "Tắt nhạc nền" : "Bật nhạc nền"}>{hud.music ? "🎵" : "🎼"}</button>
+          <button type="button" onClick={() => actionsRef.current.toggleSound()} aria-label={hud.sound ? "Tắt hiệu ứng" : "Bật hiệu ứng"}>{hud.sound ? "🔊" : "🔇"}</button>
+          <button type="button" onClick={() => actionsRef.current.pause()} disabled={hud.phase === "idle" || hud.phase === "reveal" || hud.phase === "finished"} aria-label={hud.phase === "paused" ? "Tiếp tục" : "Tạm dừng"}>{hud.phase === "paused" ? "▶" : "Ⅱ"}</button>
+          <button type="button" onClick={() => void enterImmersiveMode()} aria-label="Toàn màn hình">⛶</button>
+        </div>
       </section>
       <section className="tips" aria-label="Vật phẩm trong trò chơi">
         <article><span className="tip-icon logo-mark"><img src={`${ASSET_BASE}logo.png`} alt="Logo Trường GPP" /></span><div><strong>Logo đặc biệt</strong><p>Dọn thuốc và cộng điểm thưởng.</p></div></article>
