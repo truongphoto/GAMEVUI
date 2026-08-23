@@ -216,9 +216,11 @@ export default function DoctorRelaxGame() {
     let best = Number(localStorage.getItem("gpp-relax-best") || 0);
     let message = "Chạm Bắt đầu để thư giãn";
     let messageUntil = 0;
-    const mobileLayout = window.matchMedia("(pointer: coarse)").matches || window.innerWidth <= 900;
-    const deviceAspect = Math.max(screen.width, screen.height) / Math.max(1, Math.min(screen.width, screen.height));
-    const WIDTH = mobileLayout ? Math.round(MOBILE_HEIGHT * clamp(deviceAspect, MOBILE_WIDTH / MOBILE_HEIGHT, 2.35)) : DESKTOP_WIDTH;
+    const mobileLayout = window.matchMedia("(pointer: coarse)").matches || Math.min(window.innerWidth, window.innerHeight) <= 520 || Math.max(window.innerWidth, window.innerHeight) <= 1000;
+    const landscapeViewportW = Math.max(window.innerWidth, window.innerHeight);
+    const landscapeViewportH = Math.max(240, Math.min(window.innerWidth, window.innerHeight) - 76);
+    const playableAspect = clamp(landscapeViewportW / landscapeViewportH, MOBILE_WIDTH / MOBILE_HEIGHT, 3.15);
+    const WIDTH = mobileLayout ? Math.round(MOBILE_HEIGHT * playableAspect) : DESKTOP_WIDTH;
     const HEIGHT = mobileLayout ? MOBILE_HEIGHT : DESKTOP_HEIGHT;
 
     const mapImages = HOSPITAL_TIERS.map((hospitalTier) => {
@@ -568,11 +570,11 @@ export default function DoctorRelaxGame() {
       const glow = ctx.createRadialGradient(WIDTH / 2, HEIGHT / 2, 30, WIDTH / 2, HEIGHT / 2, 520);
       glow.addColorStop(0, "rgba(255,255,255,.08)"); glow.addColorStop(1, "rgba(8,92,122,.15)");
       ctx.fillStyle = glow; ctx.fillRect(0, 0, WIDTH, HEIGHT);
-      if (phase !== "reveal") {
-        const labelWidth = mobileLayout ? WIDTH - 32 : 390;
-        roundedRect(mobileLayout ? 16 : 24, mobileLayout ? 15 : 22, labelWidth, mobileLayout ? 42 : 46, 22); ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.fill();
-        ctx.fillStyle = "#075a78"; ctx.font = `700 ${mobileLayout ? 15 : 17}px Arial, sans-serif`; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-        ctx.fillText(`${HOSPITAL_TIERS[tier].short} · Màn ${zone + 1}/${ZONES.length} · ${ZONES[zone]} · Rơi ${dropBudget} điểm`, mobileLayout ? 32 : 43, mobileLayout ? 36 : 45, labelWidth - 28);
+      if (phase !== "reveal" && !mobileLayout) {
+        const labelWidth = 390;
+        roundedRect(24, 22, labelWidth, 46, 22); ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.fill();
+        ctx.fillStyle = "#075a78"; ctx.font = "700 17px Arial, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+        ctx.fillText(`${HOSPITAL_TIERS[tier].short} · Màn ${zone + 1}/${ZONES.length} · ${ZONES[zone]} · Rơi ${dropBudget} điểm`, 43, 45, labelWidth - 28);
       }
     }
     function drawPill(item: FallingItem) {
@@ -659,6 +661,46 @@ export default function DoctorRelaxGame() {
       }
       ctx.restore();
     }
+    function itemFxColor(item: FallingItem) {
+      if (item.kind === "rainbowLogo") return `hsl(${performance.now() / 8 % 360} 92% 62%)`;
+      const colors: Partial<Record<FallingItem["kind"], string>> = { logo:"#ffd84a", coffee:"#f2a45f", heart:"#ff6d8c", specialHeart:"#ffd75a", ambulance:"#46c8ff", magnet:"#ff738b", spaceship:"#74b9ff", badPill:"#ff5b6e", virus:"#a986ff", meteor:"#ff9852", blackhole:"#8d70ff" };
+      return colors[item.kind] || item.color || "#79e8df";
+    }
+    function drawItemAura(item: FallingItem) {
+      const now = performance.now();
+      const pulse = 1 + Math.sin(now / 150 + item.id * .7) * .08;
+      const color = itemFxColor(item);
+      ctx.save(); ctx.translate(item.x, item.y);
+      if (item.kind === "pill") {
+        const strength = .08 + item.points * .008;
+        const glow = ctx.createRadialGradient(0,0,item.r*.5,0,0,item.r*1.65);
+        glow.addColorStop(0, "rgba(255,255,255,.16)"); glow.addColorStop(.48, color.replace ? color : item.color); glow.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.globalAlpha = strength; ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(0,0,item.r*1.65*pulse,0,Math.PI*2); ctx.fill();
+        if (item.points >= 7) { ctx.globalAlpha=.34; ctx.strokeStyle="#fff3a3"; ctx.lineWidth=2; ctx.setLineDash([7,7]); ctx.rotate(now/700); ctx.beginPath(); ctx.arc(0,0,item.r*1.28,0,Math.PI*2); ctx.stroke(); }
+      } else if (item.kind === "badPill") {
+        ctx.globalAlpha=.34+.12*Math.sin(now/110); ctx.strokeStyle="#ff5b6e"; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(0,0,item.r*1.38*pulse,0,Math.PI*2); ctx.stroke();
+      } else if (item.kind === "logo" || item.kind === "rainbowLogo") {
+        ctx.globalAlpha=.42; ctx.strokeStyle=color; ctx.lineWidth=3; ctx.setLineDash([12,8]); ctx.rotate(now/520); ctx.beginPath(); ctx.arc(0,0,item.r*1.22*pulse,0,Math.PI*2); ctx.stroke();
+        ctx.rotate(-now/300); ctx.strokeStyle=item.kind === "rainbowLogo" ? `hsl(${now/6+140} 95% 63%)` : "#73ece1"; ctx.lineWidth=2; ctx.setLineDash([4,10]); ctx.beginPath(); ctx.arc(0,0,item.r*1.43,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
+        for(let i=0;i<5;i++){ const a=now/420+i*Math.PI*2/5; const rr=item.r*1.55; const x=Math.cos(a)*rr,y=Math.sin(a)*rr; ctx.globalAlpha=.75; ctx.fillStyle=i%2?"#fff1a8":"#8dfff1"; ctx.beginPath(); ctx.arc(x,y,2.6+(i%2),0,Math.PI*2); ctx.fill(); }
+      } else if (item.kind === "heart" || item.kind === "specialHeart") {
+        ctx.globalAlpha=.22+.12*Math.sin(now/135); ctx.strokeStyle=color; ctx.lineWidth=item.kind === "specialHeart"?4:3; ctx.beginPath(); ctx.arc(0,0,item.r*1.32*pulse,0,Math.PI*2); ctx.stroke();
+        if(item.kind === "specialHeart"){ ctx.globalAlpha=.55; for(let i=0;i<4;i++){ const a=now/250+i*Math.PI/2; ctx.fillStyle=`hsl(${now/8+i*75} 90% 64%)`; ctx.beginPath(); ctx.arc(Math.cos(a)*item.r*1.52,Math.sin(a)*item.r*1.52,3,0,Math.PI*2); ctx.fill(); }}
+      } else if (item.kind === "coffee") {
+        ctx.globalAlpha=.34; ctx.strokeStyle="#fff0d8"; ctx.lineWidth=3; for(let i=-1;i<=1;i++){ ctx.beginPath(); for(let y=-item.r*1.8;y<-item.r*.65;y+=5){ const x=i*9+Math.sin(y*.12+now/260+i)*4; if(y===-item.r*1.8)ctx.moveTo(x,y); else ctx.lineTo(x,y);} ctx.stroke(); }
+      } else if (item.kind === "ambulance") {
+        const flash=Math.sin(now/85)>0; ctx.globalAlpha=.58; ctx.fillStyle=flash?"#ff526d":"#59d7ff"; ctx.shadowColor=ctx.fillStyle as string; ctx.shadowBlur=16; ctx.beginPath(); ctx.arc(-item.r*.72,-item.r*.72,5,0,Math.PI*2); ctx.arc(item.r*.72,-item.r*.72,5,0,Math.PI*2); ctx.fill();
+      } else if (item.kind === "magnet") {
+        ctx.globalAlpha=.28; ctx.strokeStyle="#7ae9ff"; ctx.lineWidth=2.5; for(let r=1.25;r<=1.65;r+=.2){ctx.beginPath();ctx.arc(0,0,item.r*r,-Math.PI*.82,Math.PI*.82);ctx.stroke();}
+      } else if (item.kind === "spaceship") {
+        const grad=ctx.createLinearGradient(0,-item.r*.7,0,-item.r*2.4); grad.addColorStop(0,"rgba(126,235,255,.65)");grad.addColorStop(.45,"rgba(91,158,255,.35)");grad.addColorStop(1,"rgba(91,158,255,0)");ctx.globalAlpha=.8;ctx.fillStyle=grad;ctx.beginPath();ctx.moveTo(-8,-item.r*.5);ctx.lineTo(0,-item.r*2.2*(.85+.15*Math.sin(now/70)));ctx.lineTo(8,-item.r*.5);ctx.closePath();ctx.fill();
+      } else if (item.kind === "virus") {
+        ctx.globalAlpha=.3;ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.setLineDash([4,7]);ctx.rotate(now/500);ctx.beginPath();ctx.arc(0,0,item.r*1.4,0,Math.PI*2);ctx.stroke();
+      } else if (item.kind === "meteor") {
+        const grad=ctx.createLinearGradient(0,0,0,-item.r*2.8);grad.addColorStop(0,"rgba(255,177,76,.72)");grad.addColorStop(.35,"rgba(255,92,56,.38)");grad.addColorStop(1,"rgba(255,92,56,0)");ctx.globalAlpha=.9;ctx.fillStyle=grad;ctx.beginPath();ctx.moveTo(-item.r*.45,-item.r*.2);ctx.lineTo(0,-item.r*2.6);ctx.lineTo(item.r*.45,-item.r*.2);ctx.closePath();ctx.fill();
+      }
+      ctx.restore();
+    }
     function drawAmbientFx() {
       const now = performance.now();
       ctx.save();
@@ -708,6 +750,7 @@ export default function DoctorRelaxGame() {
     }
     function drawFrame() {
       ctx.clearRect(0, 0, WIDTH, HEIGHT); drawBackground(); drawAmbientFx(); drawItemTrails();
+      items.forEach(drawItemAura);
       ctx.save();
       if (performance.now() < shakeUntil) ctx.translate(random(-6, 6), random(-5, 5));
       items.forEach((item) => item.kind === "pill" || item.kind === "badPill" ? drawPill(item) : drawSpecial(item));

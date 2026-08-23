@@ -1,25 +1,51 @@
-GAMEVUI Visual Pro v2.1 – VALIDATION
+GAMEVUI Visual Pro v2.2 – Mobile Landscape + Item FX
+Date: 2026-08-23
 
-Mục tiêu: giữ nguyên gameplay gốc, chỉ nâng UI/FX và mobile landscape fullscreen.
+PASS – Gameplay preserved
+- spawn(): identical to v2.1
+- hitItem(): identical to v2.1
+- finishRound(): identical to v2.1
+- startRound(): identical to v2.1
+- handlePillCollisions(): identical to v2.1
+- update(): identical to v2.1
+- onPointer(): identical to v2.1
+=> Không đổi điểm, thời gian, tỷ lệ rơi, luật chơi, 5 cấp, 6 màn hay xử lý chạm.
 
-PASS - SCENE_BALANCE
-PASS - spawn logic
-PASS - pointer hit logic
-PASS - round reset / scoring actions
-PASS - main update gameplay
-PASS - const ROUND_SECONDS = 60;
-PASS - const ZONES = [
-PASS - TSX parse/syntax bằng TypeScript transpileModule.
-PASS - JSON: package.json, package-lock.json, manifest.webmanifest.
-PASS - CSS cân bằng dấu ngoặc.
-PASS - PWA orientation = landscape; display_override ưu tiên fullscreen.
-PASS - Mobile có màn nhắc xoay ngang và nút fullscreen trong game.
+PASS – Mobile landscape rebuilt
+- Không còn HUD/time/status chồng trực tiếp lên canvas.
+- Bố cục cố định: HUD 6 thông tin / thanh thời gian / canvas / status.
+- Hiển thị đủ Cấp bệnh viện, Màn, Điểm + mục tiêu, Thời gian, Combo, Kỷ lục.
+- Nút nhanh chỉ xuất hiện trong lúc đang chơi.
+- Mobile portrait vẫn hiển thị yêu cầu xoay ngang.
+- Canvas nội bộ lấy tỷ lệ theo vùng chơi sau khi trừ chrome HUD/status.
 
-Lưu ý môi trường kiểm tra: npm ci không hoàn tất vì registry package không có đầy đủ cache/kết nối bị timeout; do đó không tạo dist tại đây. Workflow GitHub Pages gốc vẫn được giữ nguyên và sẽ npm ci + build trên GitHub.
+Mobile layout calculations checked:
+- 640x360 -> canvas 640x289, HUD cell ~107px
+- 667x375 -> canvas 667x304, HUD cell ~111px
+- 740x360 -> canvas 740x289, HUD cell ~123px
+- 812x375 -> canvas 812x304, HUD cell ~135px
+- 844x390 -> canvas 844x319, HUD cell ~141px
+- 896x414 -> canvas 896x334, HUD cell ~149px
+- 932x430 -> canvas 932x350, HUD cell ~155px
 
-Thay đổi hiển thị:
-- HUD/glass UI chuyên nghiệp hơn.
-- Canvas mobile landscape toàn màn hình khi đang chơi.
-- Ánh sáng nền, item trail, vignette, sweep ánh sáng và combo glow nhẹ.
-- Điều khiển nhanh mobile: nhạc, hiệu ứng, tạm dừng, fullscreen.
-- Safe-area hỗ trợ tai thỏ / cạnh màn hình.
+PASS – Item visual effects added
+- Thuốc thường: glow mềm; thuốc điểm cao có vòng sáng chuyển động.
+- GPP / GPP cầu vồng: halo kép quay, hạt sáng quỹ đạo, trail.
+- Cà phê: hơi nóng chuyển động.
+- Tim / Tim Sao Băng: pulse + sparkle.
+- Xe cấp cứu: đèn đỏ/xanh nhấp nháy.
+- Nam châm: vòng từ trường.
+- Phi thuyền: exhaust trail.
+- Virus: vòng cảnh báo quay.
+- Thiên thạch: đuôi lửa.
+- Thuốc xấu: vòng cảnh báo đỏ.
+- Burst khi chạm vật phẩm giữ nguyên và tiếp tục hoạt động.
+
+PASS – Static validation
+- DoctorRelaxGame.tsx transpile syntax: PASS
+- main.tsx transpile syntax: PASS
+- CSS brace balance: PASS
+- Service Worker cache bumped to gpp-relax-visual-pro-v2-2
+
+NOTE
+- Full npm/Vite build was not executed in this environment because the required Vite package was not available in the local npm cache and external npm fetch timed out. GitHub Actions/Pages can install dependencies normally from package-lock.json.
