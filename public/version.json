@@ -1,6 +1,6 @@
 {
-  "version": "2.3.1",
-  "build": "gamevui-pa2.2-mobile-result-dock",
+  "version": "2.4.0",
+  "build": "gamevui-pa2.3-mobile-result-safe-event-dock",
   "released": "2026-08-24",
-  "notes": "PA2.2: màn kết quả mobile có CTA cố định cách đáy 12px + safe-area, nội dung cuộn riêng, nút lớn dễ chạm, kỷ lục mới, phản hồi chạm và khóa điều khiển gameplay khi finished."
+  "notes": "PA2.3: mobile finished chuyển bố cục 2 vùng, giữ đầy đủ nội dung, nút Sang màn cố định cao 40px + safe-area; PC thêm Event Dock dưới canvas với sự kiện/ECG, combo, thời gian tim, hiệu ứng và thông tin liên hệ; toast PC không còn che canvas."
 }

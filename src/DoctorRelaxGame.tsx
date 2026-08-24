@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 type Phase = "idle" | "playing" | "paused" | "reveal" | "finished";
-type Hud = { phase: Phase; score: number; dropBudget: number; time: number; bonusPhase: boolean; bonusBank: number; bonusTotal: number; combo: number; roundBestCombo: number; best: number; roundNewBest: boolean; sound: boolean; music: boolean; zone: number; tier: number; unlockedTier: number; message: string };
+type Hud = { phase: Phase; score: number; dropBudget: number; time: number; bonusPhase: boolean; bonusBank: number; bonusTotal: number; combo: number; roundBestCombo: number; best: number; roundNewBest: boolean; sound: boolean; music: boolean; zone: number; tier: number; unlockedTier: number; message: string; slowLeft: number; freezeLeft: number; magnetLeft: number; doubleLeft: number };
 type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
 type FallingItem = {
   id: number;
@@ -120,7 +120,7 @@ function getMedal(score: number, target: number) {
 export default function DoctorRelaxGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const actionsRef = useRef({ start: () => {}, pause: () => {}, restart: () => {}, skipReveal: () => {}, goHome: () => {}, selectTier: (_tier: number) => {}, toggleSound: () => {}, toggleMusic: () => {} });
-  const [hud, setHud] = useState<Hud>({ phase: "idle", score: 0, dropBudget: SCENE_BALANCE[0].target, time: ROUND_SECONDS, bonusPhase: false, bonusBank: 0, bonusTotal: 0, combo: 0, roundBestCombo: 0, best: 0, roundNewBest: false, sound: true, music: true, zone: 0, tier: 0, unlockedTier: 0, message: "Chạm Bắt đầu để thư giãn" });
+  const [hud, setHud] = useState<Hud>({ phase: "idle", score: 0, dropBudget: SCENE_BALANCE[0].target, time: ROUND_SECONDS, bonusPhase: false, bonusBank: 0, bonusTotal: 0, combo: 0, roundBestCombo: 0, best: 0, roundNewBest: false, sound: true, music: true, zone: 0, tier: 0, unlockedTier: 0, message: "Chạm Bắt đầu để thư giãn", slowLeft: 0, freezeLeft: 0, magnetLeft: 0, doubleLeft: 0 });
   const [showTierPicker, setShowTierPicker] = useState(false);
   const [showHelpPanel, setShowHelpPanel] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
@@ -245,7 +245,18 @@ export default function DoctorRelaxGame() {
     const logoImage = new Image();
     logoImage.src = `${ASSET_BASE}logo.png`;
 
-    const syncHud = () => setHud({ phase, score: Math.round(score), dropBudget, time: Math.max(0, Math.ceil(timeLeft)), bonusPhase, bonusBank: Math.max(0, Math.ceil(bonusTimeBank)), bonusTotal: bonusTimeTotal, combo, roundBestCombo, best, roundNewBest, sound, music, zone, tier, unlockedTier, message });
+    const syncHud = () => {
+      const now = performance.now();
+      setHud({
+        phase, score: Math.round(score), dropBudget, time: Math.max(0, Math.ceil(timeLeft)), bonusPhase,
+        bonusBank: Math.max(0, Math.ceil(bonusTimeBank)), bonusTotal: bonusTimeTotal, combo, roundBestCombo, best, roundNewBest,
+        sound, music, zone, tier, unlockedTier, message,
+        slowLeft: Math.max(0, Math.ceil((slowUntil - now) / 1000)),
+        freezeLeft: Math.max(0, Math.ceil((freezeUntil - now) / 1000)),
+        magnetLeft: Math.max(0, Math.ceil((magnetUntil - now) / 1000)),
+        doubleLeft: Math.max(0, Math.ceil((doubleUntil - now) / 1000)),
+      });
+    };
     function setMessage(next: string, duration = 1.5) {
       message = next;
       messageUntil = performance.now() + duration * 1000;
@@ -1018,6 +1029,16 @@ export default function DoctorRelaxGame() {
   const isSuperComplete = isChapterComplete && hud.tier === HOSPITAL_TIERS.length - 1;
   const nextTier = HOSPITAL_TIERS[Math.min(hud.tier + 1, HOSPITAL_TIERS.length - 1)];
   const completedUpgradeCount = Math.min(4, hud.tier);
+  const eventDockMessage = [
+    "Chạm Bắt đầu để thư giãn",
+    "Chạm vào thuốc để ghi điểm!",
+  ].includes(hud.message) ? "" : hud.message;
+  const activeEffects = [
+    hud.slowLeft > 0 ? `☕ Chậm ${hud.slowLeft}s` : "",
+    hud.freezeLeft > 0 ? `🚑 Đông băng ${hud.freezeLeft}s` : "",
+    hud.magnetLeft > 0 ? `🧲 Nam châm ${hud.magnetLeft}s` : "",
+    hud.doubleLeft > 0 ? `🌈 ×2 ${hud.doubleLeft}s` : "",
+  ].filter(Boolean);
   return (
     <main className={`site-shell phase-${hud.phase} ${inActivePlay ? "in-play" : "in-menu"}`}>
       <header className={`topbar ${showMenuShell ? "" : "topbar-hidden"}`}>
@@ -1090,20 +1111,27 @@ export default function DoctorRelaxGame() {
           {hud.phase === "finished" && <div className={`game-overlay result-panel tier-result-${hud.tier} ${isSuperComplete ? "ultimate-result" : ""}`} role="dialog" aria-modal="true" aria-label="Kết quả màn chơi">
             {isChapterComplete && <div className="celebration-burst" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /><i /></div>}
             <div className="result-scroll" tabIndex={0}>
-              <div className={`result-icon ${isSuperComplete ? "rainbow-result-logo" : ""}`}>{isSuperComplete ? <img src={`${ASSET_BASE}logo-icon.png`} alt="Logo GPP cầu vồng" /> : isChapterComplete ? "🏆" : result.icon}</div>
-              <p className="overlay-kicker">{isChapterComplete ? "Hoàn thành toàn cảnh bệnh viện" : `Hoàn thành màn ${hud.zone + 1}/${ZONES.length}`}</p>
-              <h2>{isSuperComplete ? "🏆 Hoàn thành toàn bộ hành trình!" : isChapterComplete ? "🎉 Nâng cấp thành công!" : result.title}</h2>
-              {hud.roundNewBest && <div className="new-record-badge" aria-label="Kỷ lục mới">🏆 KỶ LỤC MỚI!</div>}
-              {isChapterComplete && <div className="chapter-complete-title">Bạn đã hoàn thành <strong>{HOSPITAL_TIERS[hud.tier].name}</strong></div>}
-              {isChapterComplete ? <div className="achievement-stats">
-                <div><span>Điểm</span><strong>{hud.score}</strong></div><div><span>Kỷ lục</span><strong>{hud.best}</strong></div><div><span>Combo cao nhất</span><strong>{hud.roundBestCombo}</strong></div><div><span>Tiến độ</span><strong>{completedUpgradeCount}/4</strong></div>
-              </div> : <div className="result-score"><strong>{hud.score}</strong><span>điểm</span></div>}
-              <div className={`medal-badge medal-${medal.name.includes("Vàng") ? "gold" : medal.name.includes("Bạc") ? "silver" : medal.name.includes("Đồng") ? "bronze" : "green"}`}><span>{medal.icon}</span><strong>{medal.name}</strong><small>{medal.copy}</small></div>
-              {isChapterComplete && <div className={`unlock-banner ${isSuperComplete ? "super" : ""}`}>
-                <span>{isSuperComplete ? "🌌" : nextTier.icon}</span>
-                <div><small>{isSuperComplete ? "BỆNH VIỆN GPP SIÊU CẤP" : "CẤP MỚI ĐÃ MỞ KHÓA"}</small><strong>{isSuperComplete ? "Bạn đã hoàn thành tất cả cấp độ!" : nextTier.name}</strong>{!isSuperComplete && <em>{TIER_INTROS[Math.min(hud.tier + 1, 4)]}</em>}</div>
-              </div>}
-              <p className="result-description">{isSuperComplete ? "Bạn đã xây dựng thành công Bệnh viện GPP Siêu cấp. Một hành trình thư giãn thật tuyệt vời!" : isChapterComplete ? "Bệnh viện đã được nâng cấp. Hãy tiếp tục khám phá 6 màn thử thách mới!" : result.copy}</p>
+              <div className="result-layout">
+                <div className="result-hero">
+                  <div className={`result-icon ${isSuperComplete ? "rainbow-result-logo" : ""}`}>{isSuperComplete ? <img src={`${ASSET_BASE}logo-icon.png`} alt="Logo GPP cầu vồng" /> : isChapterComplete ? "🏆" : result.icon}</div>
+                  <p className="overlay-kicker">{isChapterComplete ? "Hoàn thành toàn cảnh bệnh viện" : `Hoàn thành màn ${hud.zone + 1}/${ZONES.length}`}</p>
+                  <h2>{isSuperComplete ? "🏆 Hoàn thành toàn bộ hành trình!" : isChapterComplete ? "🎉 Nâng cấp thành công!" : result.title}</h2>
+                  {hud.roundNewBest && <div className="new-record-badge" aria-label="Kỷ lục mới">🏆 KỶ LỤC MỚI!</div>}
+                  {isChapterComplete && <div className="chapter-complete-title">Bạn đã hoàn thành <strong>{HOSPITAL_TIERS[hud.tier].name}</strong></div>}
+                  {!isChapterComplete && <div className="result-score"><strong>{hud.score}</strong><span>điểm</span></div>}
+                </div>
+                <div className="result-details">
+                  {isChapterComplete && <div className="achievement-stats">
+                    <div><span>Điểm</span><strong>{hud.score}</strong></div><div><span>Kỷ lục</span><strong>{hud.best}</strong></div><div><span>Combo cao nhất</span><strong>{hud.roundBestCombo}</strong></div><div><span>Tiến độ</span><strong>{completedUpgradeCount}/4</strong></div>
+                  </div>}
+                  <div className={`medal-badge medal-${medal.name.includes("Vàng") ? "gold" : medal.name.includes("Bạc") ? "silver" : medal.name.includes("Đồng") ? "bronze" : "green"}`}><span>{medal.icon}</span><strong>{medal.name}</strong><small>{medal.copy}</small></div>
+                  {isChapterComplete && <div className={`unlock-banner ${isSuperComplete ? "super" : ""}`}>
+                    <span>{isSuperComplete ? "🌌" : nextTier.icon}</span>
+                    <div><small>{isSuperComplete ? "BỆNH VIỆN GPP SIÊU CẤP" : "CẤP MỚI ĐÃ MỞ KHÓA"}</small><strong>{isSuperComplete ? "Bạn đã hoàn thành tất cả cấp độ!" : nextTier.name}</strong>{!isSuperComplete && <em>{TIER_INTROS[Math.min(hud.tier + 1, 4)]}</em>}</div>
+                  </div>}
+                  <p className="result-description">{isSuperComplete ? "Bạn đã xây dựng thành công Bệnh viện GPP Siêu cấp. Một hành trình thư giãn thật tuyệt vời!" : isChapterComplete ? "Bệnh viện đã được nâng cấp. Hãy tiếp tục khám phá 6 màn thử thách mới!" : result.copy}</p>
+                </div>
+              </div>
             </div>
             <div className="result-action-dock" aria-label="Hành động sau khi hoàn thành màn">
               {isChapterComplete && !isSuperComplete && <button className="secondary-button result-secondary-action" onClick={() => setShowTierPicker(true)}>🏥 Chọn cấp</button>}
@@ -1111,6 +1139,18 @@ export default function DoctorRelaxGame() {
             </div>
           </div>}
         </div>
+        {inActivePlay && <div className="desktop-event-dock" aria-label="Bảng sự kiện trong lúc chơi">
+          <div className="event-dock-brand"><strong>BÁC SĨ THƯ GIÃN · TRƯỜNG GPP</strong><span>EVENT DOCK</span></div>
+          <div className={`event-dock-center ${eventDockMessage ? "has-event" : "is-idle"}`} aria-live="polite">
+            {eventDockMessage ? <><span className="event-pulse-dot" /><strong>{eventDockMessage}</strong></> : <div className="ecg-idle" aria-label="Không có sự kiện"><span>ECG</span><i /><i /><i /><i /><i /><i /><i /></div>}
+          </div>
+          <div className="event-dock-metrics">
+            <div className={`event-metric ${hud.combo >= 5 ? "active" : ""}`}><span>COMBO</span><strong>{hud.combo > 0 ? `×${hud.combo}` : "—"}</strong></div>
+            <div className={`event-metric heart ${hud.bonusBank > 0 || hud.bonusPhase ? "active" : ""}`}><span>❤️ THỜI GIAN</span><strong>{hud.bonusPhase ? `${hud.time}s thưởng` : hud.bonusBank > 0 ? `+${hud.bonusBank}s` : "—"}</strong></div>
+            <div className={`event-metric effects ${activeEffects.length ? "active" : ""}`}><span>HIỆU ỨNG</span><strong>{activeEffects.length ? activeEffects.join(" · ") : "Ổn định"}</strong></div>
+          </div>
+          <div className="event-dock-contact"><strong>Ngô Quang Trường</strong><span>0829076979 · Zalo truongphotoart</span></div>
+        </div>}
         {showMenuShell && <div className="status-row" aria-live="polite"><span className="live-dot" /><strong>{hud.message}</strong><span>{HOSPITAL_TIERS[hud.tier].name} · {ZONES[hud.zone]}</span></div>}
         {showPlayToast && <div className="play-toast" aria-live="polite">{hud.message}</div>}
 
