@@ -1572,3 +1572,44 @@ body { background:radial-gradient(circle at 15% 0%,rgba(73,199,164,.22),transpar
     max-width:18vw!important;
   }
 }
+
+/* === PA2.5 · Desktop Event Dock below game + anti-empty gameplay release === */
+@media (min-width:721px) and (pointer:fine) {
+  /* Event Dock là một hàng độc lập nằm HẲN dưới game-card, không còn nằm trong khung game. */
+  .site-shell.in-play {
+    min-height:100svh;
+    height:auto;
+    padding:6px 0 8px;
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+    grid-template-rows:auto 50px;
+    gap:6px;
+    align-content:center;
+  }
+  .site-shell.in-play .game-card {
+    grid-column:1;
+    grid-row:1;
+    width:100%;
+    height:auto;
+    min-height:0;
+    margin:0;
+    padding:7px 8px 8px;
+  }
+  .site-shell.in-play > .desktop-event-dock {
+    grid-column:1;
+    grid-row:2;
+    align-self:end;
+    width:100%;
+    max-width:min(1080px,calc((100svh - 154px) * 24 / 13));
+    min-height:50px;
+    height:50px;
+    margin:0 auto;
+    padding:5px;
+    border-radius:15px;
+    box-shadow:0 10px 24px rgba(2,43,58,.13),inset 0 1px 0 rgba(255,255,255,.08);
+  }
+  /* Game giữ đúng tỷ lệ và nhường 50px riêng cho Event Dock phía dưới. */
+  .site-shell.in-play .canvas-wrap {
+    max-width:min(1080px,calc((100svh - 154px) * 24 / 13));
+  }
+}

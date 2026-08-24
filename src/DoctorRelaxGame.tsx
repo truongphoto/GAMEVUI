@@ -209,6 +209,7 @@ export default function DoctorRelaxGame() {
     let roundBestCombo = 0;
     let lastHitAt = 0;
     let spawnClock = 0;
+    let continuitySpawnCooldown = 0;
     let specialClock = 8;
     let penaltyClock = 7;
     let goldenMomentAnnounced = false;
@@ -366,6 +367,21 @@ export default function DoctorRelaxGame() {
         speed: verticalSpeed, drift: kind === "specialHeart" ? random(-80, 80) : kind === "meteor" ? random(-55, 55) : random(-16, 16), points,
         color: kind === "badPill" ? "#171c22" : pillPalette(points).shell, shape: Math.random() < 0.48 ? 0 : 1, rotation: random(-0.5, 0.5), spin: random(-0.25, 0.25), hits: kind === "blackhole" ? 0 : undefined });
     }
+    function takeNextPlannedPillPoints() {
+      if (baseTimeLeft > 10 && earlyPillPlan.length > 0) return earlyPillPlan.shift()!;
+      if (earlyPillPlan.length > 0) return earlyPillPlan.shift()!;
+      if (latePillPlan.length > 0) return latePillPlan.shift()!;
+      return undefined;
+    }
+    function spawnVisiblePill(forcedPoints?: number) {
+      spawn("pill", forcedPoints);
+      const pill = items[items.length - 1];
+      // PA2.5: thuốc cứu nhịp phải xuất hiện THẬT trong vùng nhìn thấy, không chỉ nằm phía trên canvas.
+      const visibleTopBand = Math.max(pill.r + 18, Math.min(HEIGHT * .13, pill.r + 64));
+      pill.y = random(Math.max(8, pill.r * .18), visibleTopBand);
+      pill.speed = Math.max(pill.speed, 100 * SCENE_BALANCE[zone].speed);
+    }
+
     function isRewardKind(kind: FallingItem["kind"]) {
       return ["logo", "coffee", "heart", "specialHeart", "ambulance", "magnet", "spaceship", "rainbowLogo"].includes(kind);
     }
@@ -414,7 +430,7 @@ export default function DoctorRelaxGame() {
         else if (tier < HOSPITAL_TIERS.length - 1) { tier += 1; zone = 0; }
         else { tier = 0; zone = 0; }
       }
-      phase = "playing"; score = 0; timeLeft = ROUND_SECONDS; baseTimeLeft = ROUND_SECONDS; bonusTimeBank = 0; bonusTimeTotal = 0; bonusPhase = false; roundElapsed = 0; combo = 0; roundBestCombo = 0; roundNewBest = false; lastHitAt = 0; spawnClock = 0;
+      phase = "playing"; score = 0; timeLeft = ROUND_SECONDS; baseTimeLeft = ROUND_SECONDS; bonusTimeBank = 0; bonusTimeTotal = 0; bonusPhase = false; roundElapsed = 0; combo = 0; roundBestCombo = 0; roundNewBest = false; lastHitAt = 0; spawnClock = 0; continuitySpawnCooldown = 0;
       specialClock = random(7, 10); penaltyClock = random(6, 9); goldenMomentAnnounced = false; slowUntil = 0; freezeUntil = 0; magnetUntil = 0; doubleUntil = 0; shakeUntil = 0; items = []; particles = [];
       const balance = SCENE_BALANCE[zone];
       dropBudget = Math.floor(random(balance.min, balance.max + 1));
@@ -894,7 +910,7 @@ export default function DoctorRelaxGame() {
           syncHud();
         }
       }
-      spawnClock -= delta; specialClock -= delta;
+      spawnClock -= delta; continuitySpawnCooldown = Math.max(0, continuitySpawnCooldown - delta); specialClock -= delta;
       penaltyClock -= delta;
       const sceneBalance = SCENE_BALANCE[zone];
       if (!bonusPhase) {
@@ -919,10 +935,10 @@ export default function DoctorRelaxGame() {
       const pillCountOnScreen = items.filter((item) => item.kind === "pill").length;
       if (!bonusPhase && activeMandatoryCount > 0 && pillCountOnScreen < 3) spawnClock = 0;
       if (!bonusPhase && activeMandatoryCount > 0 && spawnClock <= 0 && items.length < (urgentDrop ? 44 : normalItemLimit)) {
-        const nextPoints = baseTimeLeft > 10 && earlyPillPlan.length > 0 ? earlyPillPlan.shift()! : earlyPillPlan.length > 0 ? earlyPillPlan.shift()! : latePillPlan.shift()!;
-        spawn("pill", nextPoints);
+        const nextPoints = takeNextPlannedPillPoints();
+        if (nextPoints !== undefined) spawn("pill", nextPoints);
         const remainingForWindow = baseTimeLeft > 10 ? earlyPillPlan.length : earlyPillPlan.length + latePillPlan.length;
-        const secondsToWindowEnd = Math.max(.8, baseTimeLeft - (baseTimeLeft > 10 ? 10 : 2));
+        const secondsToWindowEnd = Math.max(.8, baseTimeLeft - (baseTimeLeft > 10 ? 10 : .35));
         const evenlySpaced = secondsToWindowEnd / Math.max(1, remainingForWindow + 1);
         spawnClock = clamp(evenlySpaced, .1, sceneBalance.spawn[1]);
       } else if (bonusPhase && spawnClock <= 0 && items.length < normalItemLimit) {
@@ -988,6 +1004,21 @@ export default function DoctorRelaxGame() {
         }
       }
       items = items.filter((item) => item.y < HEIGHT + item.r);
+
+      // PA2.5 · Anti-empty medicine guard:
+      // Chỉ đếm thuốc đang nhìn thấy thật trong canvas. Giữ tối thiểu 2 viên làm lớp đệm
+      // (1 viên trong khoảnh khắc cuối) để tuyệt đối không tạo khoảng chết không có thuốc.
+      const visiblePillCount = items.filter((item) =>
+        item.kind === "pill" && item.y >= -item.r * .12 && item.y <= HEIGHT - item.r * .08
+      ).length;
+      const continuityMinimum = timeLeft > .8 ? 2 : 1;
+      if (visiblePillCount < continuityMinimum && timeLeft > .12 && continuitySpawnCooldown <= 0) {
+        const plannedPoints = bonusPhase ? undefined : takeNextPlannedPillPoints();
+        spawnVisiblePill(plannedPoints ?? (bonusPhase ? undefined : 1));
+        continuitySpawnCooldown = .22;
+        spawnClock = Math.max(spawnClock, .12);
+      }
+
       if (combo > 0 && now - lastHitAt > 1500) combo = 0;
       if (messageUntil && now > messageUntil) {
         messageUntil = 0; message = bonusPhase ? "❤️ Thời gian thưởng — ghi điểm phá kỷ lục!" : now < slowUntil ? "Đang chậm lại — tận hưởng nhé ☕" : "Chạm vào thuốc để ghi điểm!"; syncHud();
@@ -1149,7 +1180,11 @@ export default function DoctorRelaxGame() {
             </div>
           </div>}
         </div>
-        {inActivePlay && <div className="desktop-event-dock" aria-label="Bảng sự kiện trong lúc chơi">
+        {showMenuShell && <div className="status-row" aria-live="polite"><span className="live-dot" /><strong>{hud.message}</strong><span>{HOSPITAL_TIERS[hud.tier].name} · {ZONES[hud.zone]}</span></div>}
+        {showPlayToast && <div className="play-toast" aria-live="polite">{hud.message}</div>}
+
+      </section>
+      {inActivePlay && <div className="desktop-event-dock" aria-label="Bảng sự kiện trong lúc chơi">
           <div className="event-dock-brand"><strong>BÁC SĨ THƯ GIÃN · TRƯỜNG GPP</strong><span>EVENT DOCK</span></div>
           <div className={`event-dock-center ${eventDockMessage ? "has-event" : "is-idle"}`} aria-live="polite">
             {eventDockMessage ? <><span className="event-pulse-dot" /><strong>{eventDockMessage}</strong></> : <div className="ecg-idle" aria-label="Không có sự kiện"><span>ECG</span><i /><i /><i /><i /><i /><i /><i /></div>}
@@ -1161,10 +1196,6 @@ export default function DoctorRelaxGame() {
           </div>
           <div className="event-dock-contact"><strong>Ngô Quang Trường</strong><span>0829076979 · Zalo truongphotoart</span></div>
         </div>}
-        {showMenuShell && <div className="status-row" aria-live="polite"><span className="live-dot" /><strong>{hud.message}</strong><span>{HOSPITAL_TIERS[hud.tier].name} · {ZONES[hud.zone]}</span></div>}
-        {showPlayToast && <div className="play-toast" aria-live="polite">{hud.message}</div>}
-
-      </section>
       {showMenuShell && <section className="tips" aria-label="Vật phẩm nổi bật trong trò chơi">
         <article><span className="tip-icon logo-mark"><img src={`${ASSET_BASE}logo.png`} alt="Logo Trường GPP" /></span><div><strong>Logo GPP</strong><p>Dọn thuốc trên màn và tạo bonus lớn.</p></div></article>
         <article><span className="tip-icon">☕</span><div><strong>Cà phê thư giãn</strong><p>Làm chậm nhịp rơi để bạn dễ chạm hơn.</p></div></article>

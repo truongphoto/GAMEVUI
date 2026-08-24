@@ -1,6 +1,6 @@
 {
   "version": "2.5.0",
-  "build": "gamevui-pa2.4-compact-mobile-hud-balanced-pc",
+  "build": "gamevui-pa2.5-event-dock-below-anti-empty-medicine",
   "released": "2026-08-24",
-  "notes": "PA2.4: mobile gom Điểm/Thời gian/Thông báo/Combo/Tim/Hiệu ứng vào một HUD trên 40px, progress 2px, bỏ thanh dưới và nút Vật phẩm trùng, trả gần toàn bộ chiều cao cho canvas; nút Sang màn gọn và nâng cao hơn; PC cân thanh trạng thái trên với Event Dock về cùng chiều cao/tông/bề rộng."
+  "notes": "PA2.5: giữ nguyên mobile PA2.4; PC đưa toàn bộ Event Dock ra thành hàng độc lập bên dưới khu vực game để cân bố cục trên–dưới; gameplay thêm Anti-Empty Medicine Guard đếm thuốc đang nhìn thấy thật, duy trì lớp đệm tối thiểu 2 viên khi còn thời gian và thả viên cứu nhịp ngay trong canvas nếu người chơi vừa chạm hết thuốc."
 }
