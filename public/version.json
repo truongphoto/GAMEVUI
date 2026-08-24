@@ -1,6 +1,6 @@
 {
-  "version": "2.3.5",
-  "build": "pa1-pa2-pa2.1-mobile-notification-visibility-fix",
+  "version": "2.3.1",
+  "build": "gamevui-pa2.2-mobile-result-dock",
   "released": "2026-08-24",
-  "notes": "Sửa mobile landscape: neo Combo và trạng thái theo viewport an toàn; đưa ❤️ thời gian đã tích vào vùng riêng phía dưới để không bị overflow:hidden cắt mất."
+  "notes": "PA2.2: màn kết quả mobile có CTA cố định cách đáy 12px + safe-area, nội dung cuộn riêng, nút lớn dễ chạm, kỷ lục mới, phản hồi chạm và khóa điều khiển gameplay khi finished."
 }

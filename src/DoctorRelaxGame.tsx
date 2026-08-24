@@ -3,8 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 type Phase = "idle" | "playing" | "paused" | "reveal" | "finished";
-type ActiveEffect = { key: string; label: string; seconds: number };
-type Hud = { phase: Phase; score: number; dropBudget: number; time: number; bonusPhase: boolean; bonusBank: number; bonusTotal: number; combo: number; roundBestCombo: number; best: number; sound: boolean; music: boolean; zone: number; tier: number; unlockedTier: number; message: string; effects: ActiveEffect[] };
+type Hud = { phase: Phase; score: number; dropBudget: number; time: number; bonusPhase: boolean; bonusBank: number; bonusTotal: number; combo: number; roundBestCombo: number; best: number; roundNewBest: boolean; sound: boolean; music: boolean; zone: number; tier: number; unlockedTier: number; message: string };
 type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
 type FallingItem = {
   id: number;
@@ -121,7 +120,7 @@ function getMedal(score: number, target: number) {
 export default function DoctorRelaxGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const actionsRef = useRef({ start: () => {}, pause: () => {}, restart: () => {}, skipReveal: () => {}, goHome: () => {}, selectTier: (_tier: number) => {}, toggleSound: () => {}, toggleMusic: () => {} });
-  const [hud, setHud] = useState<Hud>({ phase: "idle", score: 0, dropBudget: SCENE_BALANCE[0].target, time: ROUND_SECONDS, bonusPhase: false, bonusBank: 0, bonusTotal: 0, combo: 0, roundBestCombo: 0, best: 0, sound: true, music: true, zone: 0, tier: 0, unlockedTier: 0, message: "Chạm Bắt đầu để thư giãn", effects: [] });
+  const [hud, setHud] = useState<Hud>({ phase: "idle", score: 0, dropBudget: SCENE_BALANCE[0].target, time: ROUND_SECONDS, bonusPhase: false, bonusBank: 0, bonusTotal: 0, combo: 0, roundBestCombo: 0, best: 0, roundNewBest: false, sound: true, music: true, zone: 0, tier: 0, unlockedTier: 0, message: "Chạm Bắt đầu để thư giãn" });
   const [showTierPicker, setShowTierPicker] = useState(false);
   const [showHelpPanel, setShowHelpPanel] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
@@ -130,9 +129,8 @@ export default function DoctorRelaxGame() {
   const [installed, setInstalled] = useState(false);
 
   useEffect(() => {
-    const installedDisplayMode = window.matchMedia("(display-mode: standalone)").matches || window.matchMedia("(display-mode: fullscreen)").matches;
-    const iosStandalone = Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
-    setInstalled(installedDisplayMode || iosStandalone);
+    const standalone = window.matchMedia("(display-mode: standalone)").matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
+    setInstalled(standalone);
     const onInstallPrompt = (event: Event) => { event.preventDefault(); setInstallPrompt(event as InstallPromptEvent); };
     const onInstalled = () => { setInstalled(true); setInstallPrompt(null); };
     window.addEventListener("beforeinstallprompt", onInstallPrompt);
@@ -153,10 +151,10 @@ export default function DoctorRelaxGame() {
 
   async function enterImmersiveMode() {
     const phoneLike = window.matchMedia("(pointer: coarse)").matches;
+    if (!phoneLike) return;
     try {
       if (!document.fullscreenElement && document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
     } catch {}
-    if (!phoneLike) return;
     try {
       const orientation = screen.orientation as ScreenOrientation & { lock?: (value: string) => Promise<void> };
       await orientation.lock?.("landscape");
@@ -229,9 +227,9 @@ export default function DoctorRelaxGame() {
     let sound = localStorage.getItem("gpp-relax-sound") !== "off";
     let music = localStorage.getItem("gpp-relax-music-v2") !== "off";
     let best = Number(localStorage.getItem("gpp-relax-best") || 0);
+    let roundNewBest = false;
     let message = "Chạm Bắt đầu để thư giãn";
     let messageUntil = 0;
-    let lastHudSignature = "";
     const mobileLayout = window.matchMedia("(pointer: coarse)").matches || Math.min(window.innerWidth, window.innerHeight) <= 520 || Math.max(window.innerWidth, window.innerHeight) <= 1000;
     const landscapeViewportW = Math.max(window.innerWidth, window.innerHeight);
     const landscapeViewportH = Math.max(240, Math.min(window.innerWidth, window.innerHeight) - 76);
@@ -247,19 +245,7 @@ export default function DoctorRelaxGame() {
     const logoImage = new Image();
     logoImage.src = `${ASSET_BASE}logo.png`;
 
-    const syncHud = () => {
-      const effectNow = performance.now();
-      const effects: ActiveEffect[] = [];
-      if (doubleUntil > effectNow) effects.push({ key: "double", label: "🌈 ×2 điểm", seconds: Math.max(1, Math.ceil((doubleUntil - effectNow) / 1000)) });
-      if (magnetUntil > effectNow) effects.push({ key: "magnet", label: "🧲 Nam châm", seconds: Math.max(1, Math.ceil((magnetUntil - effectNow) / 1000)) });
-      if (freezeUntil > effectNow) effects.push({ key: "freeze", label: "🚑 Đóng băng", seconds: Math.max(1, Math.ceil((freezeUntil - effectNow) / 1000)) });
-      if (slowUntil > effectNow) effects.push({ key: "slow", label: "☕ Chậm", seconds: Math.max(1, Math.ceil((slowUntil - effectNow) / 1000)) });
-      const nextHud: Hud = { phase, score: Math.round(score), dropBudget, time: Math.max(0, Math.ceil(timeLeft)), bonusPhase, bonusBank: Math.max(0, Math.ceil(bonusTimeBank)), bonusTotal: bonusTimeTotal, combo, roundBestCombo, best, sound, music, zone, tier, unlockedTier, message, effects };
-      const signature = JSON.stringify(nextHud);
-      if (signature === lastHudSignature) return;
-      lastHudSignature = signature;
-      setHud(nextHud);
-    };
+    const syncHud = () => setHud({ phase, score: Math.round(score), dropBudget, time: Math.max(0, Math.ceil(timeLeft)), bonusPhase, bonusBank: Math.max(0, Math.ceil(bonusTimeBank)), bonusTotal: bonusTimeTotal, combo, roundBestCombo, best, roundNewBest, sound, music, zone, tier, unlockedTier, message });
     function setMessage(next: string, duration = 1.5) {
       message = next;
       messageUntil = performance.now() + duration * 1000;
@@ -336,18 +322,10 @@ export default function DoctorRelaxGame() {
       musicStarting = false;
       if (musicTimer !== null) { window.clearInterval(musicTimer); musicTimer = null; }
     }
-    let lastCanvasCssW = 0;
-    let lastCanvasCssH = 0;
-    let lastCanvasDpr = 0;
     function resizeCanvas() {
       const rect = gameCanvas.getBoundingClientRect();
       const cssW = Math.max(1, rect.width || window.innerWidth);
       const cssH = Math.max(1, rect.height || window.innerHeight);
-      const dpr = Math.min(window.devicePixelRatio || 1, mobileLayout ? 1.5 : 2);
-      if (Math.abs(cssW - lastCanvasCssW) < 0.5 && Math.abs(cssH - lastCanvasCssH) < 0.5 && dpr === lastCanvasDpr) return;
-      lastCanvasCssW = cssW;
-      lastCanvasCssH = cssH;
-      lastCanvasDpr = dpr;
       if (mobileLayout) {
         // Luôn lấy tỷ lệ THỰC của vùng chơi sau khi xoay ngang / vào fullscreen.
         // Tránh lỗi canvas giữ kích thước từ lúc máy còn dọc nên chỉ vẽ ở 1 phần bên trái.
@@ -358,6 +336,7 @@ export default function DoctorRelaxGame() {
         WIDTH = DESKTOP_WIDTH;
         HEIGHT = DESKTOP_HEIGHT;
       }
+      const dpr = Math.min(window.devicePixelRatio || 1, mobileLayout ? 1.5 : 2);
       gameCanvas.width = Math.max(1, Math.round(WIDTH * dpr));
       gameCanvas.height = Math.max(1, Math.round(HEIGHT * dpr));
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -391,7 +370,8 @@ export default function DoctorRelaxGame() {
       stopMusic();
       timeLeft = 0;
       combo = 0;
-      if (score > best) { best = Math.round(score); localStorage.setItem("gpp-relax-best", String(best)); }
+      roundNewBest = score > best;
+      if (roundNewBest) { best = Math.round(score); localStorage.setItem("gpp-relax-best", String(best)); }
       const chapterComplete = zone === ZONES.length - 1;
       if (chapterComplete) {
         unlockedTier = Math.max(unlockedTier, Math.min(HOSPITAL_TIERS.length - 1, tier + 1));
@@ -423,7 +403,7 @@ export default function DoctorRelaxGame() {
         else if (tier < HOSPITAL_TIERS.length - 1) { tier += 1; zone = 0; }
         else { tier = 0; zone = 0; }
       }
-      phase = "playing"; score = 0; timeLeft = ROUND_SECONDS; baseTimeLeft = ROUND_SECONDS; bonusTimeBank = 0; bonusTimeTotal = 0; bonusPhase = false; roundElapsed = 0; combo = 0; roundBestCombo = 0; lastHitAt = 0; spawnClock = 0;
+      phase = "playing"; score = 0; timeLeft = ROUND_SECONDS; baseTimeLeft = ROUND_SECONDS; bonusTimeBank = 0; bonusTimeTotal = 0; bonusPhase = false; roundElapsed = 0; combo = 0; roundBestCombo = 0; roundNewBest = false; lastHitAt = 0; spawnClock = 0;
       specialClock = random(7, 10); penaltyClock = random(6, 9); goldenMomentAnnounced = false; slowUntil = 0; freezeUntil = 0; magnetUntil = 0; doubleUntil = 0; shakeUntil = 0; items = []; particles = [];
       const balance = SCENE_BALANCE[zone];
       dropBudget = Math.floor(random(balance.min, balance.max + 1));
@@ -444,13 +424,8 @@ export default function DoctorRelaxGame() {
     actionsRef.current.restart = () => { tone(520, 0.14, 0.13); resetRound(true); startMusic(); };
     actionsRef.current.selectTier = (nextTier: number) => {
       if (nextTier < 0 || nextTier > unlockedTier) return;
-      stopMusic();
       tier = nextTier; zone = 0; phase = "idle";
-      score = 0; timeLeft = ROUND_SECONDS; baseTimeLeft = ROUND_SECONDS; bonusTimeBank = 0; bonusTimeTotal = 0; bonusPhase = false;
-      combo = 0; roundBestCombo = 0; roundElapsed = 0; items = []; particles = []; dropBudget = SCENE_BALANCE[0].target;
-      message = `Đã chọn ${HOSPITAL_TIERS[nextTier].name} · sẵn sàng Màn 1`; messageUntil = 0;
-      tone(560 + nextTier * 55, 0.12, 0.07, "triangle");
-      syncHud();
+      tone(560 + nextTier * 55, 0.12, 0.07, "triangle"); resetRound(false); startMusic();
     };
     actionsRef.current.pause = () => {
       if (phase === "playing") { phase = "paused"; stopMusic(); message = "Đã tạm dừng — cứ thong thả nhé"; }
@@ -532,7 +507,7 @@ export default function DoctorRelaxGame() {
         burst(item.x, item.y, "#7c4dcc", 26); penaltySound();
         setMessage("Virus tinh nghịch: trừ 3 giây 🦠", 1.5);
       } else if (item.kind === "meteor") {
-        combo = 0; shakeUntil = now + 220; burst(item.x, item.y, "#845f4a", 32); penaltySound();
+        combo = 0; shakeUntil = now + 520; burst(item.x, item.y, "#845f4a", 32); penaltySound();
         setMessage("Thiên thạch làm mất chuỗi combo ☄️", 1.5);
       } else if (item.kind === "blackhole") {
         item.hits = (item.hits || 0) + 1;
@@ -839,7 +814,7 @@ export default function DoctorRelaxGame() {
       ctx.clearRect(0, 0, WIDTH, HEIGHT); drawBackground(); drawAmbientFx(); drawItemTrails();
       items.forEach(drawItemAura);
       ctx.save();
-      if (performance.now() < shakeUntil) ctx.translate(random(-2.5, 2.5), random(-2, 2));
+      if (performance.now() < shakeUntil) ctx.translate(random(-6, 6), random(-5, 5));
       items.forEach((item) => item.kind === "pill" || item.kind === "badPill" ? drawPill(item) : drawSpecial(item));
       ctx.restore();
       for (const particle of particles) {
@@ -1038,14 +1013,11 @@ export default function DoctorRelaxGame() {
   const progress = clamp((hud.time / (hud.bonusPhase ? Math.max(1, hud.bonusTotal) : ROUND_SECONDS)) * 100, 0, 100);
   const inActivePlay = hud.phase === "playing" || hud.phase === "paused";
   const showMenuShell = hud.phase === "idle" || hud.phase === "finished";
-  const routinePointMessage = /^\+\d+ điểm$/.test(hud.message);
-  const comboMessage = hud.message.startsWith("Chuỗi ");
-  const passivePlayMessage = hud.message === "Chạm Bắt đầu để thư giãn" || hud.message === "Chạm vào thuốc để ghi điểm!" || hud.message === "Đang chậm lại — tận hưởng nhé ☕" || hud.message === "❤️ Thời gian thưởng — ghi điểm phá kỷ lục!";
-  const showPlayToast = inActivePlay && Boolean(hud.message) && !routinePointMessage && !comboMessage && !passivePlayMessage;
+  const showPlayToast = inActivePlay && hud.message && hud.message !== "Chạm Bắt đầu để thư giãn";
   const isChapterComplete = hud.zone === ZONES.length - 1;
   const isSuperComplete = isChapterComplete && hud.tier === HOSPITAL_TIERS.length - 1;
   const nextTier = HOSPITAL_TIERS[Math.min(hud.tier + 1, HOSPITAL_TIERS.length - 1)];
-  const completedUpgradeCount = Math.min(4, hud.tier + (isChapterComplete ? 1 : 0));
+  const completedUpgradeCount = Math.min(4, hud.tier);
   return (
     <main className={`site-shell phase-${hud.phase} ${inActivePlay ? "in-play" : "in-menu"}`}>
       <header className={`topbar ${showMenuShell ? "" : "topbar-hidden"}`}>
@@ -1081,14 +1053,9 @@ export default function DoctorRelaxGame() {
           <div className="play-chip score"><span>⭐ Điểm</span><strong>{hud.score}</strong></div>
           <div className={`play-chip timer ${hud.bonusPhase ? "bonus" : ""}`}><span>{hud.bonusPhase ? "❤️ Thưởng" : "⏱ Thời gian"}</span><strong>{hud.time}s</strong></div>
           <button className="play-pause-button" onClick={() => actionsRef.current.pause()} aria-label={hud.phase === "paused" ? "Tiếp tục" : "Tạm dừng"}>{hud.phase === "paused" ? "▶" : "Ⅱ"}</button>
-          <div className="mobile-play-status" aria-live="polite">
-            <div className="mobile-combo-slot">
-              {hud.combo >= 5 && <div className="floating-badge combo">🔥 Combo ×{hud.combo}</div>}
-            </div>
-            <div className="mobile-effect-stack">
-              {hud.bonusBank > 0 && !hud.bonusPhase && <div className="floating-badge heart">❤️ +{hud.bonusBank}s đã tích</div>}
-              {hud.effects.slice(0, 2).map((effect) => <div key={effect.key} className={`floating-badge effect effect-${effect.key}`}>{effect.label} <b>{effect.seconds}s</b></div>)}
-            </div>
+          <div className="play-floating-info">
+            {hud.combo >= 5 && <div className="floating-badge combo">🔥 Combo ×{hud.combo}</div>}
+            {hud.bonusBank > 0 && !hud.bonusPhase && <div className="floating-badge heart">❤️ +{hud.bonusBank}s đã tích</div>}
           </div>
         </div>}
         <div className={`time-track ${hud.bonusPhase ? "bonus" : ""} ${inActivePlay ? "active" : "menu-track"}`} aria-label={`Còn ${hud.time} giây`}><span style={{ width: `${progress}%` }} /></div>
@@ -1103,10 +1070,6 @@ export default function DoctorRelaxGame() {
               <button type="button" className="secondary-button mobile-fullscreen-cta" onClick={() => void enterImmersiveMode()}>⛶ Toàn màn hình</button>
               <button type="button" className="secondary-button mobile-help-cta" onClick={() => setShowHelpPanel(true)}>❔ Xem vật phẩm</button>
             </div>
-            <div className="gpp-contact-card menu-contact" aria-label="Thông tin tác giả và liên hệ Trường GPP">
-              <span><b>Tác giả:</b> Ngô Quang Trường</span>
-              <span><b>Tư vấn TRƯỜNG GPP:</b> <a href="tel:0829076979">0829076979</a> · <b>Zalo:</b> truongphotoart</span>
-            </div>
             <span className="microcopy">GPP dọn màn · ☕ làm chậm · ❤️ cộng thời gian · 🌈 nhân đôi điểm</span>
           </div>}
           {hud.phase === "paused" && <div className="game-overlay compact-panel pause-panel-pro">
@@ -1119,56 +1082,35 @@ export default function DoctorRelaxGame() {
               <button className="secondary-button" onClick={() => setShowHelpPanel(true)}>❔ Vật phẩm</button>
               <button className="secondary-button" onClick={() => actionsRef.current.goHome()}>⌂ Màn hình chính</button>
             </div>
-            <div className="gpp-contact-card pause-contact" aria-label="Thông tin tác giả và liên hệ Trường GPP">
-              <span><b>Tác giả:</b> Ngô Quang Trường</span>
-              <span><b>Tư vấn TRƯỜNG GPP:</b> <a href="tel:0829076979">0829076979</a> · <b>Zalo:</b> truongphotoart</span>
-            </div>
           </div>}
           {hud.phase === "reveal" && <div className="panorama-reveal-overlay">
             <div className="panorama-unlocked">🏥 Toàn cảnh bệnh viện đã được mở khóa</div>
             <button onClick={() => actionsRef.current.skipReveal()}>Bỏ qua</button>
           </div>}
-          {hud.phase === "finished" && <div className={`game-overlay result-panel tier-result-${hud.tier} ${isSuperComplete ? "ultimate-result" : ""}`}>
+          {hud.phase === "finished" && <div className={`game-overlay result-panel tier-result-${hud.tier} ${isSuperComplete ? "ultimate-result" : ""}`} role="dialog" aria-modal="true" aria-label="Kết quả màn chơi">
             {isChapterComplete && <div className="celebration-burst" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /><i /></div>}
-            <div className={`result-icon ${isSuperComplete ? "rainbow-result-logo" : ""}`}>{isSuperComplete ? <img src={`${ASSET_BASE}logo-icon.png`} alt="Logo GPP cầu vồng" /> : isChapterComplete ? "🏆" : result.icon}</div>
-            <p className="overlay-kicker">{isChapterComplete ? "Hoàn thành toàn cảnh bệnh viện" : `Hoàn thành màn ${hud.zone + 1}/${ZONES.length}`}</p>
-            <h2>{isSuperComplete ? "🏆 Hoàn thành toàn bộ hành trình!" : isChapterComplete ? "🎉 Nâng cấp thành công!" : result.title}</h2>
-            {isChapterComplete && <div className="chapter-complete-title">Bạn đã hoàn thành <strong>{HOSPITAL_TIERS[hud.tier].name}</strong></div>}
-            {isChapterComplete ? <div className="achievement-stats">
-              <div><span>Điểm</span><strong>{hud.score}</strong></div><div><span>Kỷ lục</span><strong>{hud.best}</strong></div><div><span>Combo cao nhất</span><strong>{hud.roundBestCombo}</strong></div><div><span>Tiến độ</span><strong>{completedUpgradeCount}/4</strong></div>
-            </div> : <div className="result-score"><strong>{hud.score}</strong><span>điểm</span></div>}
-            <div className={`medal-badge medal-${medal.name.includes("Vàng") ? "gold" : medal.name.includes("Bạc") ? "silver" : medal.name.includes("Đồng") ? "bronze" : "green"}`}><span>{medal.icon}</span><strong>{medal.name}</strong><small>{medal.copy}</small></div>
-            {isChapterComplete && <div className={`unlock-banner ${isSuperComplete ? "super" : ""}`}>
-              <span>{isSuperComplete ? "🌌" : nextTier.icon}</span>
-              <div><small>{isSuperComplete ? "BỆNH VIỆN GPP SIÊU CẤP" : "CẤP MỚI ĐÃ MỞ KHÓA"}</small><strong>{isSuperComplete ? "Bạn đã hoàn thành tất cả cấp độ!" : nextTier.name}</strong>{!isSuperComplete && <em>{TIER_INTROS[Math.min(hud.tier + 1, 4)]}</em>}</div>
-            </div>}
-            <p>{isSuperComplete ? "Bạn đã xây dựng thành công Bệnh viện GPP Siêu cấp. Một hành trình thư giãn thật tuyệt vời!" : isChapterComplete ? "Bệnh viện đã được nâng cấp. Hãy tiếp tục khám phá 6 màn thử thách mới!" : result.copy}</p>
-            <div className="result-actions">
-              <button className={`primary-button ${isChapterComplete ? "challenge-button" : ""}`} onClick={() => { void enterImmersiveMode(); actionsRef.current.restart(); }}>{isSuperComplete ? "🔄 Chơi lại hành trình" : isChapterComplete ? `Tiếp tục thử thách Cấp ${hud.tier + 1} →` : `Sang màn ${hud.zone + 2}`}</button>
-              {isChapterComplete && !isSuperComplete && <button className="secondary-button" onClick={() => setShowTierPicker(true)}>🏥 Chọn cấp đã mở</button>}
+            <div className="result-scroll" tabIndex={0}>
+              <div className={`result-icon ${isSuperComplete ? "rainbow-result-logo" : ""}`}>{isSuperComplete ? <img src={`${ASSET_BASE}logo-icon.png`} alt="Logo GPP cầu vồng" /> : isChapterComplete ? "🏆" : result.icon}</div>
+              <p className="overlay-kicker">{isChapterComplete ? "Hoàn thành toàn cảnh bệnh viện" : `Hoàn thành màn ${hud.zone + 1}/${ZONES.length}`}</p>
+              <h2>{isSuperComplete ? "🏆 Hoàn thành toàn bộ hành trình!" : isChapterComplete ? "🎉 Nâng cấp thành công!" : result.title}</h2>
+              {hud.roundNewBest && <div className="new-record-badge" aria-label="Kỷ lục mới">🏆 KỶ LỤC MỚI!</div>}
+              {isChapterComplete && <div className="chapter-complete-title">Bạn đã hoàn thành <strong>{HOSPITAL_TIERS[hud.tier].name}</strong></div>}
+              {isChapterComplete ? <div className="achievement-stats">
+                <div><span>Điểm</span><strong>{hud.score}</strong></div><div><span>Kỷ lục</span><strong>{hud.best}</strong></div><div><span>Combo cao nhất</span><strong>{hud.roundBestCombo}</strong></div><div><span>Tiến độ</span><strong>{completedUpgradeCount}/4</strong></div>
+              </div> : <div className="result-score"><strong>{hud.score}</strong><span>điểm</span></div>}
+              <div className={`medal-badge medal-${medal.name.includes("Vàng") ? "gold" : medal.name.includes("Bạc") ? "silver" : medal.name.includes("Đồng") ? "bronze" : "green"}`}><span>{medal.icon}</span><strong>{medal.name}</strong><small>{medal.copy}</small></div>
+              {isChapterComplete && <div className={`unlock-banner ${isSuperComplete ? "super" : ""}`}>
+                <span>{isSuperComplete ? "🌌" : nextTier.icon}</span>
+                <div><small>{isSuperComplete ? "BỆNH VIỆN GPP SIÊU CẤP" : "CẤP MỚI ĐÃ MỞ KHÓA"}</small><strong>{isSuperComplete ? "Bạn đã hoàn thành tất cả cấp độ!" : nextTier.name}</strong>{!isSuperComplete && <em>{TIER_INTROS[Math.min(hud.tier + 1, 4)]}</em>}</div>
+              </div>}
+              <p className="result-description">{isSuperComplete ? "Bạn đã xây dựng thành công Bệnh viện GPP Siêu cấp. Một hành trình thư giãn thật tuyệt vời!" : isChapterComplete ? "Bệnh viện đã được nâng cấp. Hãy tiếp tục khám phá 6 màn thử thách mới!" : result.copy}</p>
+            </div>
+            <div className="result-action-dock" aria-label="Hành động sau khi hoàn thành màn">
+              {isChapterComplete && !isSuperComplete && <button className="secondary-button result-secondary-action" onClick={() => setShowTierPicker(true)}>🏥 Chọn cấp</button>}
+              <button className={`primary-button result-primary-action ${isChapterComplete ? "challenge-button" : ""}`} onClick={() => { void enterImmersiveMode(); actionsRef.current.restart(); }}>{isSuperComplete ? "🔄 CHƠI LẠI HÀNH TRÌNH" : isChapterComplete ? `TIẾP TỤC CẤP ${hud.tier + 1} →` : `SANG MÀN ${hud.zone + 2} →`}</button>
             </div>
           </div>}
         </div>
-        {inActivePlay && <div className="desktop-event-dock" aria-label="Thông tin sự kiện và liên hệ Trường GPP">
-          <div className="desktop-event-brand">
-            <span className="desktop-event-mark">💊</span>
-            <span><strong>BÁC SĨ THƯ GIÃN</strong><small>TRƯỜNG GPP</small></span>
-          </div>
-          <div className="desktop-event-center" aria-live="polite">
-            <div className="desktop-event-main">
-              {showPlayToast ? <strong>{hud.message}</strong> : <div className="desktop-ecg" aria-hidden="true"><svg viewBox="0 0 260 24" preserveAspectRatio="none"><path d="M0 12 H66 L76 12 L84 5 L94 19 L105 2 L118 22 L129 12 H260" /></svg><span>Nhịp thư giãn GPP</span></div>}
-            </div>
-            <div className="desktop-event-status">
-              {hud.combo >= 5 && <span className="dock-chip combo">🔥 Combo ×{hud.combo}</span>}
-              {hud.bonusBank > 0 && !hud.bonusPhase && <span className="dock-chip heart">❤️ +{hud.bonusBank}s</span>}
-              {hud.effects.slice(0, 2).map((effect) => <span key={effect.key} className={`dock-chip effect-${effect.key}`}>{effect.label} {effect.seconds}s</span>)}
-            </div>
-          </div>
-          <div className="desktop-event-contact">
-            <span><b>Ngô Quang Trường</b></span>
-            <span><a href="tel:0829076979">0829076979</a> · Zalo <b>truongphotoart</b></span>
-          </div>
-        </div>}
         {showMenuShell && <div className="status-row" aria-live="polite"><span className="live-dot" /><strong>{hud.message}</strong><span>{HOSPITAL_TIERS[hud.tier].name} · {ZONES[hud.zone]}</span></div>}
         {showPlayToast && <div className="play-toast" aria-live="polite">{hud.message}</div>}
 
@@ -1179,7 +1121,7 @@ export default function DoctorRelaxGame() {
         <article><span className="tip-icon pink">❤️</span><div><strong>Trái tim</strong><p>Tích thời gian thưởng cho giai đoạn bứt tốc.</p></div></article>
       </section>}
       {showMenuShell && <nav className="zone-list" aria-label="Các khu vực bệnh viện">{ZONES.map((name, index) => <span key={name} className={index === hud.zone ? "current" : ""}>{index + 1}. {name}</span>)}</nav>}
-      {showMenuShell && <footer><span>Tác giả: Ngô Quang Trường</span><span>TRƯỜNG GPP · 0829076979 · Zalo truongphotoart</span></footer>}
+      {showMenuShell && <footer><span>Trường GPP</span><span>Chơi vui · Nghỉ ngắn · Không áp lực</span></footer>}
       <div className="rotate-phone-overlay" aria-hidden="true">
         <div className="rotate-phone-card"><span>📱↻</span><strong>Vui lòng xoay ngang điện thoại</strong><small>Game được tối ưu toàn màn hình ở chế độ ngang.</small></div>
       </div>

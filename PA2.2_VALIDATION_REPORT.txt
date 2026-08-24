@@ -1,0 +1,37 @@
+GAMEVUI PA2.2 - VALIDATION REPORT
+Date: 2026-08-24
+Build label: gamevui-pa2.2-mobile-result-dock
+Package version: 2.3.1
+
+IMPLEMENTED / VERIFIED
+[OK] 1. Mobile landscape CTA is fixed at the bottom result dock.
+[OK] 2. Main CTA uses one-time entrance animation; no continuous flashing.
+[OK] 3. Main CTA minimum touch height is 50px (46px only on <=390px-high landscape screens).
+[OK] 4. CTA explicitly shows next screen / next tier.
+[OK] 5. Result information scrolls independently while CTA remains visible.
+[OK] 6. New-record badge is driven by actual pre-finish best-score comparison.
+[OK] 7. Secondary tier-selection action is smaller than the main CTA.
+[OK] 8. Touch/active feedback added for CTA buttons.
+[OK] 9. Gameplay canvas / old mobile controls are disabled in finished phase.
+[OK] 10. Result backdrop remains translucent so the game scene is still visible.
+[OK] Bottom gap = 12px + safe-area-inset-bottom.
+[OK] Horizontal gap = minimum 12px + safe-area.
+[OK] Removed the old finished-screen right-side 54px reservation via higher-priority PA2.2 override.
+[OK] Low-height landscape <=390px hides secondary result description / long unlock copy.
+[OK] PWA cache key bumped so installed clients can receive PA2.2 assets.
+[OK] version.json, package.json and package-lock root version updated to 2.3.1.
+[OK] DoctorRelaxGame.tsx parsed/transpiled successfully with TypeScript transpileModule.
+[OK] styles.css brace balance validated.
+
+ENVIRONMENT NOTE
+A full `npm run build` could not be completed in this workspace because the uploaded ZIP did not contain node_modules and network dependency installation timed out. The first build attempt stopped before project compilation at missing React type definitions. This is an environment/dependency availability issue, not a TypeScript diagnostic from the PA2.2 source. Source-level TSX transpile and CSS structural validation passed.
+
+FILES CHANGED
+- src/DoctorRelaxGame.tsx
+- src/styles.css
+- public/sw.js
+- public/version.json
+- package.json
+- package-lock.json
+- README.txt
+- PA2.2_VALIDATION_REPORT.txt
