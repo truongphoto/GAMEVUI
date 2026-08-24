@@ -1,6 +1,6 @@
 {
-  "version": "2.3.3",
-  "build": "pa1-pa2-pa2.1-pc-jitter-fix",
+  "version": "2.3.4",
+  "build": "pa1-pa2-pa2.1-pc-event-dock-mobile-notification-lanes",
   "released": "2026-08-24",
-  "notes": "Khắc phục giật màn PC do badge thông báo làm thay đổi chiều cao HUD; chống resize canvas lặp, giảm React render dư, bỏ blur động ở toast/badge và giảm rung thiên thạch."
+  "notes": "PC thêm Event Dock cân bố cục và gom thông báo; mobile tách Combo, trạng thái hiệu lực và toast vật phẩm thành các vùng riêng để không chồng nhau; lọc toast điểm/combo thường."
 }
