@@ -35,7 +35,18 @@ const TIER_INTROS = [
   "Cấp 3: 🚀 phi thuyền, trọng lực nhẹ và ☄️ thiên thạch!",
   "Cấp 4: 🌈 logo GPP cầu vồng và hố đen quá tải!",
 ];
-const COLORS = ["#34a853", "#13a6c7", "#f3b61f", "#ff7a45", "#e95c78"];
+const PILL_PALETTE = [
+  { shell: "#55c9ad", accent: "#2da88f", glow: "rgba(85,201,173,.46)", text: "#114f5a" },
+  { shell: "#67d4bc", accent: "#38b39a", glow: "rgba(103,212,188,.48)", text: "#114f5a" },
+  { shell: "#52b9dd", accent: "#2799c3", glow: "rgba(82,185,221,.48)", text: "#ffffff" },
+  { shell: "#63b9ee", accent: "#358fcd", glow: "rgba(99,185,238,.48)", text: "#ffffff" },
+  { shell: "#858dda", accent: "#6972c9", glow: "rgba(133,141,218,.48)", text: "#ffffff" },
+  { shell: "#9a94e5", accent: "#796fd4", glow: "rgba(154,148,229,.48)", text: "#ffffff" },
+  { shell: "#ef8580", accent: "#db6765", glow: "rgba(239,133,128,.50)", text: "#ffffff" },
+  { shell: "#ff9a83", accent: "#e87363", glow: "rgba(255,154,131,.52)", text: "#ffffff" },
+  { shell: "#e8b94f", accent: "#cd9830", glow: "rgba(232,185,79,.55)", text: "#114f5a" },
+  { shell: "#f4cb62", accent: "#d6a53c", glow: "rgba(244,203,98,.58)", text: "#114f5a" },
+];
 // Mỗi màn là một góc bệnh viện khác nhau; scale là phần ảnh gốc camera nhìn thấy.
 const CAMERAS = [
   { x: 0.28, y: 0.56, scale: 0.3 },  // Khoa Cấp cứu
@@ -64,6 +75,7 @@ const MOBILE_CINEMATIC_PATHS = [
 const MUSIC_NOTES = [523.25, 659.25, 783.99, 659.25, 698.46, 880, 783.99, 659.25, 587.33, 698.46, 880, 698.46, 659.25, 783.99, 1046.5, 783.99];
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 const random = (min: number, max: number) => Math.random() * (max - min) + min;
+const pillPalette = (points: number) => PILL_PALETTE[clamp(points, 1, 10) - 1];
 
 function buildCappedSegment(total: number, count: number) {
   const base = Math.floor(total / count);
@@ -107,17 +119,19 @@ function getMedal(score: number, target: number) {
 
 export default function DoctorRelaxGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const actionsRef = useRef({ start: () => {}, pause: () => {}, restart: () => {}, skipReveal: () => {}, selectTier: (_tier: number) => {}, toggleSound: () => {}, toggleMusic: () => {} });
+  const actionsRef = useRef({ start: () => {}, pause: () => {}, restart: () => {}, skipReveal: () => {}, goHome: () => {}, selectTier: (_tier: number) => {}, toggleSound: () => {}, toggleMusic: () => {} });
   const [hud, setHud] = useState<Hud>({ phase: "idle", score: 0, dropBudget: SCENE_BALANCE[0].target, time: ROUND_SECONDS, bonusPhase: false, bonusBank: 0, bonusTotal: 0, combo: 0, roundBestCombo: 0, best: 0, sound: true, music: true, zone: 0, tier: 0, unlockedTier: 0, message: "Chạm Bắt đầu để thư giãn" });
   const [showTierPicker, setShowTierPicker] = useState(false);
+  const [showHelpPanel, setShowHelpPanel] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
   const [showInstallHelp, setShowInstallHelp] = useState(false);
   const [updateRegistration, setUpdateRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [installed, setInstalled] = useState(false);
 
   useEffect(() => {
-    const standalone = window.matchMedia("(display-mode: standalone)").matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
-    setInstalled(standalone);
+    const installedDisplayMode = window.matchMedia("(display-mode: standalone)").matches || window.matchMedia("(display-mode: fullscreen)").matches;
+    const iosStandalone = Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
+    setInstalled(installedDisplayMode || iosStandalone);
     const onInstallPrompt = (event: Event) => { event.preventDefault(); setInstallPrompt(event as InstallPromptEvent); };
     const onInstalled = () => { setInstalled(true); setInstallPrompt(null); };
     window.addEventListener("beforeinstallprompt", onInstallPrompt);
@@ -138,10 +152,10 @@ export default function DoctorRelaxGame() {
 
   async function enterImmersiveMode() {
     const phoneLike = window.matchMedia("(pointer: coarse)").matches;
-    if (!phoneLike) return;
     try {
       if (!document.fullscreenElement && document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
     } catch {}
+    if (!phoneLike) return;
     try {
       const orientation = screen.orientation as ScreenOrientation & { lock?: (value: string) => Promise<void> };
       await orientation.lock?.("landscape");
@@ -339,7 +353,7 @@ export default function DoctorRelaxGame() {
       const verticalSpeed = kind === "specialHeart" ? 370 : (isLogo ? 76 : kind === "blackhole" ? 54 : kind === "meteor" ? 112 : random(88, 108)) * sceneSpeed * pointSpeed;
       items.push({ id: ++itemId, kind, x: random(r + 18, WIDTH - r - 18), y: -r - random(0, 70), r,
         speed: verticalSpeed, drift: kind === "specialHeart" ? random(-80, 80) : kind === "meteor" ? random(-55, 55) : random(-16, 16), points,
-        color: kind === "badPill" ? "#171c22" : COLORS[Math.max(0, points - 1) % COLORS.length], shape: Math.random() < 0.48 ? 0 : 1, rotation: random(-0.5, 0.5), spin: random(-0.25, 0.25), hits: kind === "blackhole" ? 0 : undefined });
+        color: kind === "badPill" ? "#171c22" : pillPalette(points).shell, shape: Math.random() < 0.48 ? 0 : 1, rotation: random(-0.5, 0.5), spin: random(-0.25, 0.25), hits: kind === "blackhole" ? 0 : undefined });
     }
     function isRewardKind(kind: FallingItem["kind"]) {
       return ["logo", "coffee", "heart", "specialHeart", "ambulance", "magnet", "spaceship", "rainbowLogo"].includes(kind);
@@ -409,12 +423,23 @@ export default function DoctorRelaxGame() {
     actionsRef.current.restart = () => { tone(520, 0.14, 0.13); resetRound(true); startMusic(); };
     actionsRef.current.selectTier = (nextTier: number) => {
       if (nextTier < 0 || nextTier > unlockedTier) return;
+      stopMusic();
       tier = nextTier; zone = 0; phase = "idle";
-      tone(560 + nextTier * 55, 0.12, 0.07, "triangle"); resetRound(false); startMusic();
+      score = 0; timeLeft = ROUND_SECONDS; baseTimeLeft = ROUND_SECONDS; bonusTimeBank = 0; bonusTimeTotal = 0; bonusPhase = false;
+      combo = 0; roundBestCombo = 0; roundElapsed = 0; items = []; particles = []; dropBudget = SCENE_BALANCE[0].target;
+      message = `Đã chọn ${HOSPITAL_TIERS[nextTier].name} · sẵn sàng Màn 1`; messageUntil = 0;
+      tone(560 + nextTier * 55, 0.12, 0.07, "triangle");
+      syncHud();
     };
     actionsRef.current.pause = () => {
       if (phase === "playing") { phase = "paused"; stopMusic(); message = "Đã tạm dừng — cứ thong thả nhé"; }
       else if (phase === "paused") { phase = "playing"; startMusic(); message = "Tiếp tục nào!"; messageUntil = performance.now() + 1200; }
+      syncHud();
+    };
+    actionsRef.current.goHome = () => {
+      phase = "idle"; stopMusic();
+      items = []; particles = []; combo = 0; bonusPhase = false; bonusTimeBank = 0; bonusTimeTotal = 0; timeLeft = ROUND_SECONDS; baseTimeLeft = ROUND_SECONDS;
+      message = "Chạm Bắt đầu để thư giãn"; messageUntil = 0;
       syncHud();
     };
     actionsRef.current.toggleSound = () => {
@@ -442,13 +467,15 @@ export default function DoctorRelaxGame() {
         tone(390 + item.points * 70 + multiplier * 22, 0.08, 0.055, "triangle");
         setMessage(combo >= 5 ? `Chuỗi ${combo} · x${multiplier * doubleMultiplier} điểm!` : `+${item.points * multiplier * doubleMultiplier} điểm`, 0.7);
       } else if (item.kind === "logo") {
-        const cleared = items.filter((entry) => entry.kind === "pill").length;
+        const pillEntries = items.filter((entry) => entry.kind === "pill");
+        const cleared = pillEntries.length;
         score += 18 + cleared * 2;
-        items.filter((entry) => entry.kind === "pill").forEach((entry) => burst(entry.x, entry.y, entry.color, 8));
+        pillEntries.sort((a, b) => Math.hypot(a.x - item.x, a.y - item.y) - Math.hypot(b.x - item.x, b.y - item.y))
+          .forEach((entry, index) => { window.setTimeout(() => burst(entry.x, entry.y, entry.color, 10), index * 18); });
         items = items.filter((entry) => entry.kind !== "pill" && entry.id !== item.id);
-        burst(item.x, item.y, "#ffd84a", 46);
-        rewardSound(650);
-        setMessage(`Logo GPP! Dọn màn hình +${18 + cleared * 2}`, 1.5);
+        burst(item.x, item.y, "#ffd84a", 64);
+        rewardSound(650); window.setTimeout(() => tone(1020, 0.12, 0.04, "triangle"), 70); window.setTimeout(() => tone(1260, 0.16, 0.04, "sine"), 150);
+        setMessage(`✨ GPP BONUS! Dọn màn +${18 + cleared * 2} điểm`, 1.7);
         syncHud(); return;
       } else if (item.kind === "coffee") {
         slowUntil = now + 5000; score += 10; burst(item.x, item.y, "#d98b52", 28); rewardSound(480);
@@ -471,8 +498,9 @@ export default function DoctorRelaxGame() {
         items = items.filter((entry) => entry.kind !== "pill" && entry.id !== item.id);
         rewardSound(720); setMessage(`Phi thuyền quét thuốc +${15 + cleared} 🚀`, 1.7); syncHud(); return;
       } else if (item.kind === "rainbowLogo") {
-        doubleUntil = now + 5000; score += 25; burst(item.x, item.y, `hsl(${now / 8 % 360} 90% 60%)`, 70); victorySound();
-        setMessage("Logo GPP cầu vồng: nhân đôi điểm 5 giây! 🌈", 2);
+        doubleUntil = now + 5000; score += 25; burst(item.x, item.y, `hsl(${now / 8 % 360} 90% 60%)`, 86); victorySound();
+        window.setTimeout(() => tone(1320, 0.1, 0.03, "triangle"), 80); window.setTimeout(() => tone(1560, 0.14, 0.035, "sine"), 160);
+        setMessage("🌈 Logo GPP cầu vồng: nhân đôi điểm 5 giây!", 2.1);
       } else if (item.kind === "badPill") {
         score = Math.max(0, score - 5); burst(item.x, item.y, "#1b2026", 24); penaltySound();
         setMessage("Thuốc đầu lâu: trừ 5 điểm ☠️", 1.5);
@@ -592,48 +620,59 @@ export default function DoctorRelaxGame() {
       }
     }
     function drawPill(item: FallingItem) {
+      const palette = pillPalette(item.points || 1);
       ctx.save(); ctx.translate(item.x, item.y); ctx.rotate(item.rotation);
-      ctx.shadowColor = "rgba(0,57,77,.22)"; ctx.shadowBlur = 14; ctx.shadowOffsetY = 6;
+      ctx.shadowColor = "rgba(6,68,84,.18)"; ctx.shadowBlur = 18; ctx.shadowOffsetY = 7;
       if (item.shape === 0) {
-        // Viên nén tròn: thân thuốc liền màu và rãnh bẻ đôi thật ở giữa.
-        const gradient = ctx.createRadialGradient(-item.r * .35, -item.r * .4, 2, 0, 0, item.r);
-        gradient.addColorStop(0, "#ffffff"); gradient.addColorStop(.3, item.color); gradient.addColorStop(1, item.color);
+        const glow = ctx.createRadialGradient(0, 0, item.r * .25, 0, 0, item.r * 1.6);
+        glow.addColorStop(0, "rgba(255,255,255,.34)"); glow.addColorStop(.55, palette.glow); glow.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.globalAlpha = .22; ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(0, 0, item.r * 1.6, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+        const gradient = ctx.createRadialGradient(-item.r * .32, -item.r * .38, 2, 0, 0, item.r);
+        gradient.addColorStop(0, "#fffefd"); gradient.addColorStop(.26, "#ffffff"); gradient.addColorStop(.6, palette.shell); gradient.addColorStop(1, palette.accent);
         ctx.beginPath(); ctx.arc(0, 0, item.r, 0, Math.PI * 2); ctx.fillStyle = gradient; ctx.fill();
-        ctx.shadowBlur = 0; ctx.strokeStyle = "rgba(0,55,70,.2)"; ctx.lineWidth = 2; ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(-item.r * .68, 5); ctx.lineTo(item.r * .68, 5);
-        ctx.strokeStyle = "rgba(0,52,67,.42)"; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(-item.r * .64, 3); ctx.lineTo(item.r * .64, 3);
-        ctx.strokeStyle = "rgba(255,255,255,.42)"; ctx.lineWidth = 1; ctx.stroke();
+        ctx.shadowBlur = 0; ctx.strokeStyle = "rgba(255,255,255,.92)"; ctx.lineWidth = 2.5; ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-item.r * .66, 4); ctx.lineTo(item.r * .66, 4);
+        ctx.strokeStyle = "rgba(17,79,90,.34)"; ctx.lineWidth = 2.8; ctx.lineCap = "round"; ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-item.r * .58, 2.5); ctx.lineTo(item.r * .58, 2.5);
+        ctx.strokeStyle = "rgba(255,255,255,.52)"; ctx.lineWidth = 1.2; ctx.stroke();
         if (item.kind === "pill") {
-          ctx.fillStyle = "white"; ctx.font = `900 ${item.r * .66}px Arial, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-          ctx.shadowColor = "rgba(0,40,55,.45)"; ctx.shadowBlur = 3; ctx.fillText(String(item.points), 0, -item.r * .28);
+          ctx.fillStyle = "rgba(255,255,255,.86)"; ctx.beginPath(); ctx.arc(0, -item.r * .18, item.r * .45, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = palette.text; ctx.font = `900 ${item.r * .62}px Arial, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillText(String(item.points), 0, -item.r * .18);
         }
       } else {
-        // Viên nang hai đầu: nửa trắng, nửa màu và đường ráp ở chính giữa.
-        const width = item.r * 2.8;
-        const height = item.r * 1.42;
+        const width = item.r * 2.92;
+        const height = item.r * 1.44;
+        const halo = ctx.createRadialGradient(0, 0, item.r * .4, 0, 0, item.r * 1.9);
+        halo.addColorStop(0, "rgba(255,255,255,.20)"); halo.addColorStop(.52, palette.glow); halo.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.globalAlpha = .24; ctx.fillStyle = halo; ctx.beginPath(); ctx.ellipse(0, 0, item.r * 1.9, item.r * 1.2, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
         roundedRect(-width / 2, -height / 2, width, height, height / 2);
         ctx.save(); ctx.clip();
         const left = ctx.createLinearGradient(-width / 2, -height / 2, 0, height / 2);
-        left.addColorStop(0, item.kind === "badPill" ? "#4a4f55" : "#ffffff"); left.addColorStop(1, item.kind === "badPill" ? "#101419" : "#dfeef0");
+        left.addColorStop(0, item.kind === "badPill" ? "#505860" : "#ffffff"); left.addColorStop(1, item.kind === "badPill" ? "#151a1f" : "#edf7f8");
         ctx.fillStyle = left; ctx.fillRect(-width / 2, -height / 2, width / 2, height);
         const right = ctx.createLinearGradient(0, -height / 2, width / 2, height / 2);
-        right.addColorStop(0, item.color); right.addColorStop(1, item.color);
+        right.addColorStop(0, palette.shell); right.addColorStop(1, palette.accent);
         ctx.fillStyle = right; ctx.fillRect(0, -height / 2, width / 2, height);
-        ctx.fillStyle = "rgba(255,255,255,.28)"; ctx.fillRect(-width / 2 + 7, -height / 2 + 5, width - 14, height * .22);
+        ctx.fillStyle = "rgba(255,255,255,.30)"; ctx.fillRect(-width / 2 + 7, -height / 2 + 5, width - 14, height * .22);
         ctx.restore();
         ctx.shadowBlur = 0; roundedRect(-width / 2, -height / 2, width, height, height / 2);
-        ctx.strokeStyle = "rgba(0,55,70,.22)"; ctx.lineWidth = 2; ctx.stroke();
+        ctx.strokeStyle = "rgba(255,255,255,.88)"; ctx.lineWidth = 2.2; ctx.stroke();
         ctx.beginPath(); ctx.moveTo(0, -height / 2 + 2); ctx.lineTo(0, height / 2 - 2);
-        ctx.strokeStyle = "rgba(0,55,70,.28)"; ctx.lineWidth = 2; ctx.stroke();
+        ctx.strokeStyle = "rgba(17,79,90,.26)"; ctx.lineWidth = 2; ctx.stroke();
         if (item.kind === "pill") {
-          ctx.fillStyle = "white"; ctx.font = `900 ${item.r * .68}px Arial, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-          ctx.shadowColor = "rgba(0,40,55,.5)"; ctx.shadowBlur = 3; ctx.fillText(String(item.points), width * .25, 1);
+          ctx.fillStyle = "rgba(255,255,255,.88)"; roundedRect(width * .06, -height * .28, item.r * .98, item.r * .62, item.r * .31); ctx.fill();
+          ctx.fillStyle = palette.text; ctx.font = `900 ${item.r * .56}px Arial, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillText(String(item.points), width * .31, 1);
         }
       }
       if (item.kind === "badPill") {
         ctx.shadowColor = "rgba(0,0,0,.65)"; ctx.shadowBlur = 8; ctx.fillStyle = "#fff"; ctx.font = `900 ${item.r * 1.05}px Arial, sans-serif`;
         ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("☠", 0, 1);
+      }
+      if (item.kind === "pill" && item.points >= 9) {
+        ctx.shadowBlur = 0; ctx.fillStyle = "rgba(255,243,173,.95)"; ctx.font = `700 ${item.r * .42}px Arial, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(item.points === 10 ? "★" : "✦", item.r * .62, -item.r * .62);
       }
       ctx.restore();
     }
@@ -643,10 +682,22 @@ export default function DoctorRelaxGame() {
       const isLogo = item.kind === "logo" || item.kind === "rainbowLogo";
       ctx.shadowColor = item.kind === "rainbowLogo" ? `hsl(${now / 7 % 360} 95% 58%)` : item.kind === "logo" ? "rgba(255,204,30,.8)" : "rgba(0,82,106,.3)"; ctx.shadowBlur = item.kind === "rainbowLogo" ? 34 : 22;
       if (isLogo) {
-        // Giữ nguyên toàn bộ logo người dùng gửi, không cắt chỉ còn chữ GPP.
-        roundedRect(-item.r * .96, -item.r * .96, item.r * 1.92, item.r * 1.92, 17);
-        ctx.fillStyle = "rgba(255,255,255,.96)"; ctx.fill();
-        ctx.shadowBlur = 0; ctx.strokeStyle = item.kind === "rainbowLogo" ? `hsl(${now / 6 % 360} 95% 55%)` : "#f4c430"; ctx.lineWidth = item.kind === "rainbowLogo" ? 6 : 3; ctx.stroke();
+        const logoPulse = 1 + Math.sin(now / 200 + item.id) * .03;
+        ctx.save();
+        ctx.globalAlpha = .28;
+        for (let i = 0; i < 6; i++) {
+          const rayAngle = now / 900 + (Math.PI * 2 * i) / 6;
+          ctx.strokeStyle = item.kind === "rainbowLogo" ? `hsla(${(now / 6 + i * 30) % 360} 95% 68% / .36)` : "rgba(255,214,90,.34)";
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(rayAngle) * item.r * .8, Math.sin(rayAngle) * item.r * .8);
+          ctx.lineTo(Math.cos(rayAngle) * item.r * 1.8, Math.sin(rayAngle) * item.r * 1.8);
+          ctx.stroke();
+        }
+        ctx.restore();
+        roundedRect(-item.r * .98 * logoPulse, -item.r * .98 * logoPulse, item.r * 1.96 * logoPulse, item.r * 1.96 * logoPulse, 18);
+        ctx.fillStyle = "rgba(255,255,255,.97)"; ctx.fill();
+        ctx.shadowBlur = 0; ctx.strokeStyle = item.kind === "rainbowLogo" ? `hsl(${now / 6 % 360} 95% 55%)` : "#f4c430"; ctx.lineWidth = item.kind === "rainbowLogo" ? 6 : 4; ctx.stroke();
         if (logoImage.complete && logoImage.naturalWidth > 0) {
           if (item.kind === "rainbowLogo") ctx.filter = `hue-rotate(${now / 10 % 360}deg) saturate(1.8)`;
           ctx.drawImage(logoImage, -item.r * .84, -item.r * .84, item.r * 1.68, item.r * 1.68);
@@ -678,7 +729,7 @@ export default function DoctorRelaxGame() {
     function itemFxColor(item: FallingItem) {
       if (item.kind === "rainbowLogo") return `hsl(${performance.now() / 8 % 360} 92% 62%)`;
       const colors: Partial<Record<FallingItem["kind"], string>> = { logo:"#ffd84a", coffee:"#f2a45f", heart:"#ff6d8c", specialHeart:"#ffd75a", ambulance:"#46c8ff", magnet:"#ff738b", spaceship:"#74b9ff", badPill:"#ff5b6e", virus:"#a986ff", meteor:"#ff9852", blackhole:"#8d70ff" };
-      return colors[item.kind] || item.color || "#79e8df";
+      return colors[item.kind] || pillPalette(item.points || 1).shell || item.color || "#79e8df";
     }
     function drawItemAura(item: FallingItem) {
       const now = performance.now();
@@ -686,11 +737,12 @@ export default function DoctorRelaxGame() {
       const color = itemFxColor(item);
       ctx.save(); ctx.translate(item.x, item.y);
       if (item.kind === "pill") {
-        const strength = .08 + item.points * .008;
-        const glow = ctx.createRadialGradient(0,0,item.r*.5,0,0,item.r*1.65);
-        glow.addColorStop(0, "rgba(255,255,255,.16)"); glow.addColorStop(.48, color); glow.addColorStop(1, "rgba(255,255,255,0)");
-        ctx.globalAlpha = strength; ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(0,0,item.r*1.65*pulse,0,Math.PI*2); ctx.fill();
-        if (item.points >= 7) { ctx.globalAlpha=.34; ctx.strokeStyle="#fff3a3"; ctx.lineWidth=2; ctx.setLineDash([7,7]); ctx.rotate(now/700); ctx.beginPath(); ctx.arc(0,0,item.r*1.28,0,Math.PI*2); ctx.stroke(); }
+        const strength = .11 + item.points * .01;
+        const glow = ctx.createRadialGradient(0,0,item.r*.42,0,0,item.r*1.78);
+        glow.addColorStop(0, "rgba(255,255,255,.20)"); glow.addColorStop(.42, color); glow.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.globalAlpha = strength; ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(0,0,item.r*1.75*pulse,0,Math.PI*2); ctx.fill();
+        if (item.points >= 7) { ctx.globalAlpha=.34; ctx.strokeStyle=item.points >= 9 ? "#fff1a0" : "rgba(255,255,255,.8)"; ctx.lineWidth=2; ctx.setLineDash([7,7]); ctx.rotate(now/700); ctx.beginPath(); ctx.arc(0,0,item.r*1.26,0,Math.PI*2); ctx.stroke(); }
+        if (item.points >= 9) { ctx.globalAlpha=.72; for(let i=0;i<3;i++){ const a=now/380+i*Math.PI*2/3; ctx.fillStyle=i===0?"#fff7be":"#ffffff"; ctx.beginPath(); ctx.arc(Math.cos(a)*item.r*1.46,Math.sin(a)*item.r*1.46,2.2,0,Math.PI*2); ctx.fill(); } }
       } else if (item.kind === "badPill") {
         ctx.globalAlpha=.34+.12*Math.sin(now/110); ctx.strokeStyle="#ff5b6e"; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(0,0,item.r*1.38*pulse,0,Math.PI*2); ctx.stroke();
       } else if (item.kind === "logo" || item.kind === "rainbowLogo") {
@@ -740,7 +792,7 @@ export default function DoctorRelaxGame() {
           const ty = item.y - i * (reward ? 13 : 8);
           const tr = Math.max(3, item.r * (reward ? .18 : .10) * (1 - i / (steps + 2)));
           ctx.globalAlpha = alpha * (1 - i / (steps + 1));
-          ctx.fillStyle = item.kind === "rainbowLogo" ? `hsl(${performance.now() / 8 + i * 35} 90% 62%)` : reward ? "#79e8df" : "#ffffff";
+          ctx.fillStyle = item.kind === "rainbowLogo" ? `hsl(${performance.now() / 8 + i * 35} 90% 62%)` : reward ? (item.kind === "logo" ? "#ffd968" : "#79e8df") : pillPalette(item.points || 1).shell;
           ctx.beginPath(); ctx.arc(item.x, ty, tr, 0, Math.PI * 2); ctx.fill();
         }
       }
@@ -963,13 +1015,16 @@ export default function DoctorRelaxGame() {
   const sceneBalance = SCENE_BALANCE[hud.zone];
   const medal = getMedal(hud.score, sceneBalance.target);
   const progress = clamp((hud.time / (hud.bonusPhase ? Math.max(1, hud.bonusTotal) : ROUND_SECONDS)) * 100, 0, 100);
+  const inActivePlay = hud.phase === "playing" || hud.phase === "paused";
+  const showMenuShell = hud.phase === "idle" || hud.phase === "finished";
+  const showPlayToast = inActivePlay && hud.message && hud.message !== "Chạm Bắt đầu để thư giãn";
   const isChapterComplete = hud.zone === ZONES.length - 1;
   const isSuperComplete = isChapterComplete && hud.tier === HOSPITAL_TIERS.length - 1;
   const nextTier = HOSPITAL_TIERS[Math.min(hud.tier + 1, HOSPITAL_TIERS.length - 1)];
-  const completedUpgradeCount = Math.min(4, hud.tier);
+  const completedUpgradeCount = Math.min(4, hud.tier + (isChapterComplete ? 1 : 0));
   return (
-    <main className={`site-shell phase-${hud.phase}`}>
-      <header className="topbar">
+    <main className={`site-shell phase-${hud.phase} ${inActivePlay ? "in-play" : "in-menu"}`}>
+      <header className={`topbar ${showMenuShell ? "" : "topbar-hidden"}`}>
         <div className="brand">
           <div className="brand-logo-wrap"><img src={`${ASSET_BASE}logo.png`} alt="Logo Trường GPP" className="brand-logo" /></div>
           <div><p className="eyebrow">TRƯỜNG GPP · PHÚT GIẢI LAO</p><h1>Bác Sĩ Thư Giãn</h1><p className="tagline">6 màn mỗi chặng · Nâng cấp đến Bệnh viện Siêu cấp</p></div>
@@ -977,45 +1032,60 @@ export default function DoctorRelaxGame() {
         <div className="top-actions">
           {!installed && <button className="icon-button install-button" onClick={installGame}>📲 Cài game</button>}
           {updateRegistration && <button className="icon-button update-button" onClick={updateGame}>⬆ Cập nhật</button>}
+          <button className="icon-button" onClick={() => setShowHelpPanel(true)}>❔ Vật phẩm</button>
           <button className="icon-button" onClick={() => actionsRef.current.toggleMusic()} aria-label={hud.music ? "Tắt nhạc nền" : "Bật nhạc nền"}>{hud.music ? "🎵 Nhạc nền" : "🎼 Bật nhạc"}</button>
           <button className="icon-button" onClick={() => actionsRef.current.toggleSound()} aria-label={hud.sound ? "Tắt hiệu ứng" : "Bật hiệu ứng"}>{hud.sound ? "🔊 Hiệu ứng" : "🔇 Bật tiếng"}</button>
-          <button className="icon-button" onClick={() => actionsRef.current.pause()} disabled={hud.phase === "idle" || hud.phase === "reveal" || hud.phase === "finished"}>{hud.phase === "paused" ? "▶ Tiếp tục" : "Ⅱ Tạm dừng"}</button>
         </div>
       </header>
       <section className={`game-card ${hud.phase === "reveal" ? "cinematic-reveal" : ""}`} aria-label="Trò chơi Bác Sĩ Thư Giãn">
-        <div className="upgrade-roadmap" aria-label="Lộ trình nâng cấp bệnh viện">
-          {HOSPITAL_TIERS.map((hospitalTier, index) => {
-            const locked = index > hud.unlockedTier;
-            const selectable = !locked && (hud.phase === "idle" || hud.phase === "finished");
-            return <button type="button" key={hospitalTier.name} disabled={!selectable} onClick={() => actionsRef.current.selectTier(index)} className={`upgrade-step ${index === hud.tier ? "current" : ""} ${index <= hud.unlockedTier && index !== hud.tier ? "complete" : ""} ${locked ? "locked" : ""}`}>
-              <span>{locked ? "🔒" : index <= hud.unlockedTier && index !== hud.tier ? "✓" : hospitalTier.icon}</span><div><small>{index === 0 ? "Khởi đầu" : `Cấp ${index}`}</small><strong>{hospitalTier.short}</strong></div>
-            </button>;
-          })}
-        </div>
-        <div className="hud">
-          <div className="hud-item tier"><span>Cấp bệnh viện</span><strong>{hud.tier === 0 ? "Gốc" : `${hud.tier}/4`}</strong></div>
-          <div className="hud-item level"><span>Màn</span><strong>{hud.zone + 1}/{ZONES.length}</strong></div>
-          <div className="hud-item score-target"><span>Điểm · Rơi đủ {hud.dropBudget}</span><strong>{hud.score}</strong></div>
-          <div className={`hud-item timer ${hud.bonusPhase ? "bonus" : ""}`}><span>{hud.bonusPhase ? "❤️ Thời gian thưởng" : hud.bonusBank > 0 ? `Thời gian · +${hud.bonusBank}s` : "Thời gian"}</span><strong>{hud.time}s</strong></div>
-          <div className={`hud-item combo ${hud.combo >= 5 ? "active" : ""}`}><span>Chuỗi</span><strong>{hud.combo}</strong></div>
-          <div className="hud-item best"><span>Kỷ lục</span><strong>{hud.best}</strong></div>
-        </div>
-        <div className={`time-track ${hud.bonusPhase ? "bonus" : ""}`} aria-label={`Còn ${hud.time} giây`}><span style={{ width: `${progress}%` }} /></div>
+        {showMenuShell && <div className="menu-summary">
+          <div className="menu-summary-main">
+            <div className="menu-stage-chip">{HOSPITAL_TIERS[hud.tier].icon} {HOSPITAL_TIERS[hud.tier].name} · Màn {hud.zone + 1}/{ZONES.length}</div>
+            <div className="menu-progress-dots" aria-label="Tiến trình bệnh viện">{HOSPITAL_TIERS.map((hospitalTier, index) => {
+              const locked = index > hud.unlockedTier;
+              const selectable = !locked && (hud.phase === "idle" || hud.phase === "finished");
+              return <button type="button" key={hospitalTier.name} disabled={!selectable} onClick={() => actionsRef.current.selectTier(index)} className={`progress-dot ${index === hud.tier ? "current" : ""} ${index <= hud.unlockedTier ? "open" : "locked"}`} aria-label={hospitalTier.name}>{locked ? "🔒" : hospitalTier.icon}</button>;
+            })}</div>
+            <div className="menu-summary-copy"><strong>Mục tiêu màn:</strong> thả đủ <b>{hud.dropBudget}</b> điểm thuốc trong 60 giây · <strong>Kỷ lục:</strong> {hud.best}</div>
+          </div>
+          <div className="menu-summary-help">
+            <button type="button" className="assist-chip" onClick={() => setShowHelpPanel(true)}>❔ Xem toàn bộ vật phẩm</button>
+            <div className="assist-inline">{TIER_INTROS[hud.tier]}</div>
+          </div>
+        </div>}
+        {inActivePlay && <div className="play-hud" aria-label="Thông tin trong lúc chơi">
+          <div className="play-chip score"><span>⭐ Điểm</span><strong>{hud.score}</strong></div>
+          <div className={`play-chip timer ${hud.bonusPhase ? "bonus" : ""}`}><span>{hud.bonusPhase ? "❤️ Thưởng" : "⏱ Thời gian"}</span><strong>{hud.time}s</strong></div>
+          <button className="play-pause-button" onClick={() => actionsRef.current.pause()} aria-label={hud.phase === "paused" ? "Tiếp tục" : "Tạm dừng"}>{hud.phase === "paused" ? "▶" : "Ⅱ"}</button>
+          <div className="play-floating-info">
+            {hud.combo >= 5 && <div className="floating-badge combo">🔥 Combo ×{hud.combo}</div>}
+            {hud.bonusBank > 0 && !hud.bonusPhase && <div className="floating-badge heart">❤️ +{hud.bonusBank}s đã tích</div>}
+          </div>
+        </div>}
+        <div className={`time-track ${hud.bonusPhase ? "bonus" : ""} ${inActivePlay ? "active" : "menu-track"}`} aria-label={`Còn ${hud.time} giây`}><span style={{ width: `${progress}%` }} /></div>
         <div className="canvas-wrap">
           <canvas ref={canvasRef} className="game-canvas" aria-label="Khu vực chơi, chạm vào các viên thuốc" />
           {hud.phase === "idle" && <div className="game-overlay welcome-panel">
-            <div className="pulse-icon">💊</div><p className="overlay-kicker">Luật chơi chỉ có một dòng</p><h2>Chạm thuốc để ghi điểm</h2>
-            <p>Không có thua. Chỉ có 60 giây vui vẻ dành cho bạn.</p>
+            <div className="pulse-icon">💊</div><p className="overlay-kicker">Luật chơi trong một phút</p><h2>Chạm thuốc để ghi điểm</h2>
+            <p>Thư giãn nhẹ nhàng trong 60 giây. Chỉ cần chạm đúng vật phẩm và tránh đồ nguy hiểm.</p>
             <button className="primary-button" onClick={() => { void enterImmersiveMode(); actionsRef.current.start(); }}>▶ Bắt đầu thư giãn</button>
             <div className="welcome-quick-actions">
               {!installed && <button type="button" className="secondary-button mobile-install-cta" onClick={installGame}>📲 Cài ứng dụng</button>}
               <button type="button" className="secondary-button mobile-fullscreen-cta" onClick={() => void enterImmersiveMode()}>⛶ Toàn màn hình</button>
+              <button type="button" className="secondary-button mobile-help-cta" onClick={() => setShowHelpPanel(true)}>❔ Xem vật phẩm</button>
             </div>
-            <span className="microcopy">Logo GPP dọn màn hình · ☕ làm chậm · ❤️ thêm 5 giây</span>
+            <span className="microcopy">GPP dọn màn · ☕ làm chậm · ❤️ cộng thời gian · 🌈 nhân đôi điểm</span>
           </div>}
-          {hud.phase === "paused" && <div className="game-overlay compact-panel">
-            <div className="breath">🌿</div><h2>Thở nhẹ một chút</h2><p>Game đang tạm dừng, điểm số vẫn được giữ nguyên.</p>
-            <button className="primary-button" onClick={() => actionsRef.current.pause()}>Tiếp tục</button>
+          {hud.phase === "paused" && <div className="game-overlay compact-panel pause-panel-pro">
+            <div className="breath">🌿</div><h2>Tạm dừng một chút</h2><p>Điểm và thời gian đã được giữ lại. Bạn có thể chỉnh nhanh ngay tại đây.</p>
+            <div className="pause-actions-grid">
+              <button className="primary-button" onClick={() => actionsRef.current.pause()}>▶ Tiếp tục</button>
+              <button className="secondary-button" onClick={() => actionsRef.current.toggleMusic()}>{hud.music ? "🎵 Nhạc: Bật" : "🎼 Nhạc: Tắt"}</button>
+              <button className="secondary-button" onClick={() => actionsRef.current.toggleSound()}>{hud.sound ? "🔊 Hiệu ứng: Bật" : "🔇 Hiệu ứng: Tắt"}</button>
+              <button className="secondary-button" onClick={() => void enterImmersiveMode()}>⛶ Toàn màn hình</button>
+              <button className="secondary-button" onClick={() => setShowHelpPanel(true)}>❔ Vật phẩm</button>
+              <button className="secondary-button" onClick={() => actionsRef.current.goHome()}>⌂ Màn hình chính</button>
+            </div>
           </div>}
           {hud.phase === "reveal" && <div className="panorama-reveal-overlay">
             <div className="panorama-unlocked">🏥 Toàn cảnh bệnh viện đã được mở khóa</div>
@@ -1042,21 +1112,17 @@ export default function DoctorRelaxGame() {
             </div>
           </div>}
         </div>
-        <div className="status-row" aria-live="polite"><span className="live-dot" /><strong>{hud.message}</strong><span>{HOSPITAL_TIERS[hud.tier].name} · {ZONES[hud.zone]}</span></div>
-        <div className="mobile-game-controls" aria-label="Điều khiển nhanh">
-          <button type="button" onClick={() => actionsRef.current.toggleMusic()} aria-label={hud.music ? "Tắt nhạc nền" : "Bật nhạc nền"}>{hud.music ? "🎵" : "🎼"}</button>
-          <button type="button" onClick={() => actionsRef.current.toggleSound()} aria-label={hud.sound ? "Tắt hiệu ứng" : "Bật hiệu ứng"}>{hud.sound ? "🔊" : "🔇"}</button>
-          <button type="button" onClick={() => actionsRef.current.pause()} disabled={hud.phase === "idle" || hud.phase === "reveal" || hud.phase === "finished"} aria-label={hud.phase === "paused" ? "Tiếp tục" : "Tạm dừng"}>{hud.phase === "paused" ? "▶" : "Ⅱ"}</button>
-          <button type="button" onClick={() => void enterImmersiveMode()} aria-label="Toàn màn hình">⛶</button>
-        </div>
+        {showMenuShell && <div className="status-row" aria-live="polite"><span className="live-dot" /><strong>{hud.message}</strong><span>{HOSPITAL_TIERS[hud.tier].name} · {ZONES[hud.zone]}</span></div>}
+        {showPlayToast && <div className="play-toast" aria-live="polite">{hud.message}</div>}
+
       </section>
-      <section className="tips" aria-label="Vật phẩm trong trò chơi">
-        <article><span className="tip-icon logo-mark"><img src={`${ASSET_BASE}logo.png`} alt="Logo Trường GPP" /></span><div><strong>Logo đặc biệt</strong><p>Dọn thuốc và cộng điểm thưởng.</p></div></article>
-        <article><span className="tip-icon">☕</span><div><strong>Cà phê thư giãn</strong><p>Làm mọi thứ chậm lại 5 giây.</p></div></article>
-        <article><span className="tip-icon pink">❤️</span><div><strong>Trái tim</strong><p>Tặng thêm 5 giây vui vẻ.</p></div></article>
-      </section>
-      <nav className="zone-list" aria-label="Các khu vực bệnh viện">{ZONES.map((name, index) => <span key={name} className={index === hud.zone ? "current" : ""}>{index + 1}. {name}</span>)}</nav>
-      <footer><span>Trường GPP</span><span>Chơi vui · Nghỉ ngắn · Không áp lực</span></footer>
+      {showMenuShell && <section className="tips" aria-label="Vật phẩm nổi bật trong trò chơi">
+        <article><span className="tip-icon logo-mark"><img src={`${ASSET_BASE}logo.png`} alt="Logo Trường GPP" /></span><div><strong>Logo GPP</strong><p>Dọn thuốc trên màn và tạo bonus lớn.</p></div></article>
+        <article><span className="tip-icon">☕</span><div><strong>Cà phê thư giãn</strong><p>Làm chậm nhịp rơi để bạn dễ chạm hơn.</p></div></article>
+        <article><span className="tip-icon pink">❤️</span><div><strong>Trái tim</strong><p>Tích thời gian thưởng cho giai đoạn bứt tốc.</p></div></article>
+      </section>}
+      {showMenuShell && <nav className="zone-list" aria-label="Các khu vực bệnh viện">{ZONES.map((name, index) => <span key={name} className={index === hud.zone ? "current" : ""}>{index + 1}. {name}</span>)}</nav>}
+      {showMenuShell && <footer><span>Trường GPP</span><span>Chơi vui · Nghỉ ngắn · Không áp lực</span></footer>}
       <div className="rotate-phone-overlay" aria-hidden="true">
         <div className="rotate-phone-card"><span>📱↻</span><strong>Vui lòng xoay ngang điện thoại</strong><small>Game được tối ưu toàn màn hình ở chế độ ngang.</small></div>
       </div>
@@ -1064,6 +1130,22 @@ export default function DoctorRelaxGame() {
         <div className="tier-picker-panel"><button className="modal-close" onClick={() => setShowTierPicker(false)} aria-label="Đóng">×</button><img src={`${ASSET_BASE}logo-icon.png`} alt="Biểu tượng GPP" /><h2>Chọn cấp đã mở</h2><p>Tiến độ được lưu tự động trên thiết bị này.</p><div className="tier-picker-grid">
           {HOSPITAL_TIERS.map((hospitalTier, index) => <button key={hospitalTier.name} disabled={index > hud.unlockedTier} onClick={() => { actionsRef.current.selectTier(index); setShowTierPicker(false); }}><span>{index > hud.unlockedTier ? "🔒" : hospitalTier.icon}</span><strong>{hospitalTier.name}</strong></button>)}
         </div></div>
+      </div>}
+      {showHelpPanel && <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Vật phẩm trong game">
+        <div className="help-panel"><button className="modal-close" onClick={() => setShowHelpPanel(false)} aria-label="Đóng">×</button><h2>Vật phẩm & chướng ngại</h2><p>Nhận diện nhanh để chạm đúng và đạt điểm tốt hơn.</p><div className="help-grid">
+          <article><span>💊</span><div><strong>Thuốc điểm</strong><p>Mint → Aqua → Lavender → Coral → Gold. Càng vàng càng nhiều điểm.</p></div></article>
+          <article><span><img src={`${ASSET_BASE}logo.png`} alt="Logo GPP" /></span><div><strong>Logo GPP</strong><p>Vật phẩm hiếm: dọn thuốc trên màn và thưởng điểm lớn.</p></div></article>
+          <article><span>🌈</span><div><strong>Logo GPP cầu vồng</strong><p>Nhân đôi điểm trong 5 giây.</p></div></article>
+          <article><span>☕</span><div><strong>Cà phê</strong><p>Làm chậm mọi vật đang rơi trong 5 giây.</p></div></article>
+          <article><span>❤️</span><div><strong>Trái tim</strong><p>Tích thêm thời gian thưởng. Tim Sao Băng cho thưởng cao hơn.</p></div></article>
+          <article><span>🚑</span><div><strong>Xe cấp cứu</strong><p>Đóng băng thuốc trong 3 giây.</p></div></article>
+          <article><span>🧲</span><div><strong>Nam châm y tế</strong><p>Hút thuốc về giữa màn trong 5 giây.</p></div></article>
+          <article><span>🚀</span><div><strong>Phi thuyền</strong><p>Quét sạch thuốc thường trên màn.</p></div></article>
+          <article className="danger"><span>☠️</span><div><strong>Thuốc đầu lâu</strong><p>Chạm vào sẽ bị trừ 5 điểm.</p></div></article>
+          <article className="danger"><span>🦠</span><div><strong>Virus</strong><p>Trừ 3 giây thời gian còn lại.</p></div></article>
+          <article className="danger"><span>☄️</span><div><strong>Thiên thạch</strong><p>Làm mất chuỗi combo hiện tại.</p></div></article>
+          <article className="danger"><span>🕳️</span><div><strong>Hố đen</strong><p>Chạm 3 lần để đóng, sau đó nhận thưởng nhỏ.</p></div></article>
+        </div><button className="primary-button" onClick={() => setShowHelpPanel(false)}>Đã hiểu</button></div>
       </div>}
       {showInstallHelp && <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Cài game">
         <div className="install-panel"><button className="modal-close" onClick={() => setShowInstallHelp(false)} aria-label="Đóng">×</button><img src={`${ASSET_BASE}logo-icon.png`} alt="Biểu tượng GPP" /><h2>Tạo lối tắt game</h2><p><strong>iPhone/iPad:</strong> bấm Chia sẻ rồi chọn “Thêm vào màn hình chính”.</p><p><strong>PC/Android:</strong> mở menu trình duyệt và chọn “Cài đặt ứng dụng” hoặc “Thêm vào màn hình chính”.</p><button className="primary-button" onClick={() => setShowInstallHelp(false)}>Đã hiểu</button></div>

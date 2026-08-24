@@ -1,6 +1,6 @@
 {
-  "version": "2.0.0",
-  "build": "gamevui-v2",
-  "released": "2026-08-23",
-  "notes": "V2 triển khai 20 phương án: UI game, nhịp 60s, pattern vật phẩm, Emergency Moment, GPP đặc biệt, combo, ECG bệnh nhân, 5 cấp/6 màn khác nhau, Focus thay giảm tốc, sự kiện hiếm, kết quả nâng cao và layout PC/mobile."
+  "version": "2.3.1",
+  "build": "pa1-pa2-pa2.1-final-qa",
+  "released": "2026-08-24",
+  "notes": "Final QA: giữ PA1 + PA2 + PA2.1, sửa fullscreen PC, chọn cấp không tự chạy game, loại xung đột CSS HUD mobile cũ và tối ưu menu/play/pause landscape."
 }
