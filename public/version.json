@@ -1,6 +1,6 @@
 {
-  "version": "2.4.0",
-  "build": "gamevui-pa2.3-mobile-result-safe-event-dock",
+  "version": "2.5.0",
+  "build": "gamevui-pa2.4-compact-mobile-hud-balanced-pc",
   "released": "2026-08-24",
-  "notes": "PA2.3: mobile finished chuyển bố cục 2 vùng, giữ đầy đủ nội dung, nút Sang màn cố định cao 40px + safe-area; PC thêm Event Dock dưới canvas với sự kiện/ECG, combo, thời gian tim, hiệu ứng và thông tin liên hệ; toast PC không còn che canvas."
+  "notes": "PA2.4: mobile gom Điểm/Thời gian/Thông báo/Combo/Tim/Hiệu ứng vào một HUD trên 40px, progress 2px, bỏ thanh dưới và nút Vật phẩm trùng, trả gần toàn bộ chiều cao cho canvas; nút Sang màn gọn và nâng cao hơn; PC cân thanh trạng thái trên với Event Dock về cùng chiều cao/tông/bề rộng."
 }

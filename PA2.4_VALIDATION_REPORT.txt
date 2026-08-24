@@ -1,0 +1,17 @@
+GAMEVUI · PA2.4 VALIDATION REPORT
+Date: 2026-08-24
+
+Implemented
+- Mobile landscape active HUD reduced to one 40px bar (38px on very short screens).
+- Score + time + event + combo + banked heart time + active effects share the same top bar.
+- Time progress reduced to 2px.
+- Removed active-play bottom status/toast/control legacy rows on mobile; canvas receives the reclaimed height.
+- Removed duplicate mobile Help/Vật phẩm CTA from the welcome/menu path; Vật phẩm remains available in Pause.
+- Finished CTA width reduced to max 64vw/520px, height 46px, raised to 58px + safe-area from bottom.
+- Result dock backdrop reduced so it no longer reads as a large black bottom strip.
+- PC top status bar restyled to match Event Dock; both use ~50px height and align to the same play-frame width.
+- Event Dock retained with brand, event/ECG, combo/time/effects, contact info.
+- Service worker cache and version metadata bumped.
+
+Safety / scope
+- Gameplay scoring, timers, tier progression, item behavior, audio and PWA install logic were not changed.

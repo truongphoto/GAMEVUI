@@ -1,0 +1,25 @@
+PA2.3 VALIDATION REPORT
+========================
+
+Mobile finished screen
+- CTA Sang màn dùng position: fixed theo viewport.
+- Khoảng cách đáy tăng từ 12px lên 40px + env(safe-area-inset-bottom).
+- Nội dung kết quả chia 2 vùng ngang: result-hero / result-details.
+- Không còn ẩn result-description hoặc mô tả cấp mới ở màn hình thấp.
+- result-scroll giữ overflow-y:auto làm phương án dự phòng, CTA không nằm trong vùng cuộn.
+- Nút chính tối thiểu 54px (50px ở landscape cực thấp).
+
+Desktop Event Dock
+- Dock nằm bên dưới khu vực chơi, không overlay canvas.
+- Trái: BÁC SĨ THƯ GIÃN · TRƯỜNG GPP.
+- Giữa: thông báo sự kiện; không có sự kiện hiển thị ECG nhẹ.
+- Vùng riêng: combo / thời gian tim / hiệu ứng đang chạy.
+- Phải: Ngô Quang Trường · 0829076979 · Zalo truongphotoart.
+- play-toast bị ẩn trên thiết bị pointer:fine (PC), nên không còn toast bay đè canvas.
+
+Code checks
+- TypeScript transpile diagnostics: 0 (global TypeScript 5.x transpileModule).
+- Strict standalone type-check của DoctorRelaxGame.tsx với React shim tối thiểu: passed.
+- TSX bracket/brace balance: passed.
+- CSS brace balance: passed.
+- npm ci --offline không thực hiện được vì môi trường không có sẵn cache vite/react; do đó không ghi nhận full Vite build trong môi trường này.

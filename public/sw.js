@@ -1,4 +1,4 @@
-const CACHE_NAME = "gpp-relax-pa2-3-result-safe-event-dock-v1";
+const CACHE_NAME = "gpp-relax-pa2-4-compact-hud-balanced-pc-v1";
 const BASE = new URL("./", self.registration.scope);
 const CORE_FILES = [
   "./",

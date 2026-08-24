@@ -1039,6 +1039,12 @@ export default function DoctorRelaxGame() {
     hud.magnetLeft > 0 ? `🧲 Nam châm ${hud.magnetLeft}s` : "",
     hud.doubleLeft > 0 ? `🌈 ×2 ${hud.doubleLeft}s` : "",
   ].filter(Boolean);
+  const compactEffects = [
+    hud.slowLeft > 0 ? `☕${hud.slowLeft}s` : "",
+    hud.freezeLeft > 0 ? `🚑${hud.freezeLeft}s` : "",
+    hud.magnetLeft > 0 ? `🧲${hud.magnetLeft}s` : "",
+    hud.doubleLeft > 0 ? `🌈×2 ${hud.doubleLeft}s` : "",
+  ].filter(Boolean);
   return (
     <main className={`site-shell phase-${hud.phase} ${inActivePlay ? "in-play" : "in-menu"}`}>
       <header className={`topbar ${showMenuShell ? "" : "topbar-hidden"}`}>
@@ -1074,9 +1080,13 @@ export default function DoctorRelaxGame() {
           <div className="play-chip score"><span>⭐ Điểm</span><strong>{hud.score}</strong></div>
           <div className={`play-chip timer ${hud.bonusPhase ? "bonus" : ""}`}><span>{hud.bonusPhase ? "❤️ Thưởng" : "⏱ Thời gian"}</span><strong>{hud.time}s</strong></div>
           <button className="play-pause-button" onClick={() => actionsRef.current.pause()} aria-label={hud.phase === "paused" ? "Tiếp tục" : "Tạm dừng"}>{hud.phase === "paused" ? "▶" : "Ⅱ"}</button>
-          <div className="play-floating-info">
-            {hud.combo >= 5 && <div className="floating-badge combo">🔥 Combo ×{hud.combo}</div>}
-            {hud.bonusBank > 0 && !hud.bonusPhase && <div className="floating-badge heart">❤️ +{hud.bonusBank}s đã tích</div>}
+          <div className="play-floating-info" aria-live="polite">
+            {eventDockMessage && <div className="floating-badge event">{eventDockMessage}</div>}
+            {hud.combo >= 5 && <div className="floating-badge combo">🔥 ×{hud.combo}</div>}
+            {hud.bonusBank > 0 && !hud.bonusPhase && <div className="floating-badge heart">❤️ +{hud.bonusBank}s</div>}
+            {hud.bonusPhase && <div className="floating-badge heart">❤️ {hud.time}s</div>}
+            {compactEffects.length > 0 && <div className="floating-badge effects">{compactEffects.join(" · ")}</div>}
+            {!eventDockMessage && hud.combo < 5 && hud.bonusBank <= 0 && !hud.bonusPhase && activeEffects.length === 0 && <div className="floating-badge calm"><span className="mini-ecg" aria-hidden="true" /> GPP</div>}
           </div>
         </div>}
         <div className={`time-track ${hud.bonusPhase ? "bonus" : ""} ${inActivePlay ? "active" : "menu-track"}`} aria-label={`Còn ${hud.time} giây`}><span style={{ width: `${progress}%` }} /></div>
