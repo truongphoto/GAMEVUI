@@ -230,6 +230,7 @@ export default function DoctorRelaxGame() {
     let best = Number(localStorage.getItem("gpp-relax-best") || 0);
     let message = "Chạm Bắt đầu để thư giãn";
     let messageUntil = 0;
+    let lastHudSignature = "";
     const mobileLayout = window.matchMedia("(pointer: coarse)").matches || Math.min(window.innerWidth, window.innerHeight) <= 520 || Math.max(window.innerWidth, window.innerHeight) <= 1000;
     const landscapeViewportW = Math.max(window.innerWidth, window.innerHeight);
     const landscapeViewportH = Math.max(240, Math.min(window.innerWidth, window.innerHeight) - 76);
@@ -245,7 +246,13 @@ export default function DoctorRelaxGame() {
     const logoImage = new Image();
     logoImage.src = `${ASSET_BASE}logo.png`;
 
-    const syncHud = () => setHud({ phase, score: Math.round(score), dropBudget, time: Math.max(0, Math.ceil(timeLeft)), bonusPhase, bonusBank: Math.max(0, Math.ceil(bonusTimeBank)), bonusTotal: bonusTimeTotal, combo, roundBestCombo, best, sound, music, zone, tier, unlockedTier, message });
+    const syncHud = () => {
+      const nextHud: Hud = { phase, score: Math.round(score), dropBudget, time: Math.max(0, Math.ceil(timeLeft)), bonusPhase, bonusBank: Math.max(0, Math.ceil(bonusTimeBank)), bonusTotal: bonusTimeTotal, combo, roundBestCombo, best, sound, music, zone, tier, unlockedTier, message };
+      const signature = JSON.stringify(nextHud);
+      if (signature === lastHudSignature) return;
+      lastHudSignature = signature;
+      setHud(nextHud);
+    };
     function setMessage(next: string, duration = 1.5) {
       message = next;
       messageUntil = performance.now() + duration * 1000;
@@ -322,10 +329,18 @@ export default function DoctorRelaxGame() {
       musicStarting = false;
       if (musicTimer !== null) { window.clearInterval(musicTimer); musicTimer = null; }
     }
+    let lastCanvasCssW = 0;
+    let lastCanvasCssH = 0;
+    let lastCanvasDpr = 0;
     function resizeCanvas() {
       const rect = gameCanvas.getBoundingClientRect();
       const cssW = Math.max(1, rect.width || window.innerWidth);
       const cssH = Math.max(1, rect.height || window.innerHeight);
+      const dpr = Math.min(window.devicePixelRatio || 1, mobileLayout ? 1.5 : 2);
+      if (Math.abs(cssW - lastCanvasCssW) < 0.5 && Math.abs(cssH - lastCanvasCssH) < 0.5 && dpr === lastCanvasDpr) return;
+      lastCanvasCssW = cssW;
+      lastCanvasCssH = cssH;
+      lastCanvasDpr = dpr;
       if (mobileLayout) {
         // Luôn lấy tỷ lệ THỰC của vùng chơi sau khi xoay ngang / vào fullscreen.
         // Tránh lỗi canvas giữ kích thước từ lúc máy còn dọc nên chỉ vẽ ở 1 phần bên trái.
@@ -336,7 +351,6 @@ export default function DoctorRelaxGame() {
         WIDTH = DESKTOP_WIDTH;
         HEIGHT = DESKTOP_HEIGHT;
       }
-      const dpr = Math.min(window.devicePixelRatio || 1, mobileLayout ? 1.5 : 2);
       gameCanvas.width = Math.max(1, Math.round(WIDTH * dpr));
       gameCanvas.height = Math.max(1, Math.round(HEIGHT * dpr));
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -511,7 +525,7 @@ export default function DoctorRelaxGame() {
         burst(item.x, item.y, "#7c4dcc", 26); penaltySound();
         setMessage("Virus tinh nghịch: trừ 3 giây 🦠", 1.5);
       } else if (item.kind === "meteor") {
-        combo = 0; shakeUntil = now + 520; burst(item.x, item.y, "#845f4a", 32); penaltySound();
+        combo = 0; shakeUntil = now + 220; burst(item.x, item.y, "#845f4a", 32); penaltySound();
         setMessage("Thiên thạch làm mất chuỗi combo ☄️", 1.5);
       } else if (item.kind === "blackhole") {
         item.hits = (item.hits || 0) + 1;
@@ -818,7 +832,7 @@ export default function DoctorRelaxGame() {
       ctx.clearRect(0, 0, WIDTH, HEIGHT); drawBackground(); drawAmbientFx(); drawItemTrails();
       items.forEach(drawItemAura);
       ctx.save();
-      if (performance.now() < shakeUntil) ctx.translate(random(-6, 6), random(-5, 5));
+      if (performance.now() < shakeUntil) ctx.translate(random(-2.5, 2.5), random(-2, 2));
       items.forEach((item) => item.kind === "pill" || item.kind === "badPill" ? drawPill(item) : drawSpecial(item));
       ctx.restore();
       for (const particle of particles) {
@@ -1074,6 +1088,10 @@ export default function DoctorRelaxGame() {
               <button type="button" className="secondary-button mobile-fullscreen-cta" onClick={() => void enterImmersiveMode()}>⛶ Toàn màn hình</button>
               <button type="button" className="secondary-button mobile-help-cta" onClick={() => setShowHelpPanel(true)}>❔ Xem vật phẩm</button>
             </div>
+            <div className="gpp-contact-card menu-contact" aria-label="Thông tin tác giả và liên hệ Trường GPP">
+              <span><b>Tác giả:</b> Ngô Quang Trường</span>
+              <span><b>Tư vấn TRƯỜNG GPP:</b> <a href="tel:0829076979">0829076979</a> · <b>Zalo:</b> truongphotoart</span>
+            </div>
             <span className="microcopy">GPP dọn màn · ☕ làm chậm · ❤️ cộng thời gian · 🌈 nhân đôi điểm</span>
           </div>}
           {hud.phase === "paused" && <div className="game-overlay compact-panel pause-panel-pro">
@@ -1085,6 +1103,10 @@ export default function DoctorRelaxGame() {
               <button className="secondary-button" onClick={() => void enterImmersiveMode()}>⛶ Toàn màn hình</button>
               <button className="secondary-button" onClick={() => setShowHelpPanel(true)}>❔ Vật phẩm</button>
               <button className="secondary-button" onClick={() => actionsRef.current.goHome()}>⌂ Màn hình chính</button>
+            </div>
+            <div className="gpp-contact-card pause-contact" aria-label="Thông tin tác giả và liên hệ Trường GPP">
+              <span><b>Tác giả:</b> Ngô Quang Trường</span>
+              <span><b>Tư vấn TRƯỜNG GPP:</b> <a href="tel:0829076979">0829076979</a> · <b>Zalo:</b> truongphotoart</span>
             </div>
           </div>}
           {hud.phase === "reveal" && <div className="panorama-reveal-overlay">
@@ -1112,6 +1134,10 @@ export default function DoctorRelaxGame() {
             </div>
           </div>}
         </div>
+        {inActivePlay && <div className="desktop-play-contact" aria-label="Thông tin Trường GPP">
+          <span><b>Tác giả:</b> Ngô Quang Trường</span>
+          <span><b>TRƯỜNG GPP:</b> <a href="tel:0829076979">0829076979</a> · Zalo <b>truongphotoart</b></span>
+        </div>}
         {showMenuShell && <div className="status-row" aria-live="polite"><span className="live-dot" /><strong>{hud.message}</strong><span>{HOSPITAL_TIERS[hud.tier].name} · {ZONES[hud.zone]}</span></div>}
         {showPlayToast && <div className="play-toast" aria-live="polite">{hud.message}</div>}
 
@@ -1122,7 +1148,7 @@ export default function DoctorRelaxGame() {
         <article><span className="tip-icon pink">❤️</span><div><strong>Trái tim</strong><p>Tích thời gian thưởng cho giai đoạn bứt tốc.</p></div></article>
       </section>}
       {showMenuShell && <nav className="zone-list" aria-label="Các khu vực bệnh viện">{ZONES.map((name, index) => <span key={name} className={index === hud.zone ? "current" : ""}>{index + 1}. {name}</span>)}</nav>}
-      {showMenuShell && <footer><span>Trường GPP</span><span>Chơi vui · Nghỉ ngắn · Không áp lực</span></footer>}
+      {showMenuShell && <footer><span>Tác giả: Ngô Quang Trường</span><span>TRƯỜNG GPP · 0829076979 · Zalo truongphotoart</span></footer>}
       <div className="rotate-phone-overlay" aria-hidden="true">
         <div className="rotate-phone-card"><span>📱↻</span><strong>Vui lòng xoay ngang điện thoại</strong><small>Game được tối ưu toàn màn hình ở chế độ ngang.</small></div>
       </div>

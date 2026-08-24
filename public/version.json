@@ -1,6 +1,6 @@
 {
-  "version": "2.3.1",
-  "build": "pa1-pa2-pa2.1-final-qa",
+  "version": "2.3.3",
+  "build": "pa1-pa2-pa2.1-pc-jitter-fix",
   "released": "2026-08-24",
-  "notes": "Final QA: giữ PA1 + PA2 + PA2.1, sửa fullscreen PC, chọn cấp không tự chạy game, loại xung đột CSS HUD mobile cũ và tối ưu menu/play/pause landscape."
+  "notes": "Khắc phục giật màn PC do badge thông báo làm thay đổi chiều cao HUD; chống resize canvas lặp, giảm React render dư, bỏ blur động ở toast/badge và giảm rung thiên thạch."
 }
