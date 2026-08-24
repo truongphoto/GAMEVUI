@@ -1,6 +1,6 @@
 {
-  "version": "2.3.4",
-  "build": "pa1-pa2-pa2.1-pc-event-dock-mobile-notification-lanes",
+  "version": "2.3.5",
+  "build": "pa1-pa2-pa2.1-mobile-notification-visibility-fix",
   "released": "2026-08-24",
-  "notes": "PC thêm Event Dock cân bố cục và gom thông báo; mobile tách Combo, trạng thái hiệu lực và toast vật phẩm thành các vùng riêng để không chồng nhau; lọc toast điểm/combo thường."
+  "notes": "Sửa mobile landscape: neo Combo và trạng thái theo viewport an toàn; đưa ❤️ thời gian đã tích vào vùng riêng phía dưới để không bị overflow:hidden cắt mất."
 }

@@ -939,7 +939,7 @@ body { background:radial-gradient(circle at 15% 0%,rgba(73,199,164,.22),transpar
 .mobile-play-status { display:none; }
 .desktop-event-dock { display:none; }
 
-@media (min-width:721px) {
+@media (min-width:721px) and (hover:hover) and (pointer:fine) {
   .site-shell.in-play .play-toast { display:none!important; }
   .site-shell.in-play .mobile-play-status { display:none!important; }
   .site-shell.in-play .canvas-wrap { max-width:calc((100svh - 144px) * 24 / 13); }
@@ -1074,31 +1074,37 @@ body { background:radial-gradient(circle at 15% 0%,rgba(73,199,164,.22),transpar
   .phase-playing .mobile-play-status,
   .phase-paused .mobile-play-status {
     display:block!important;
-    position:absolute!important;
-    top:calc(100% + 7px)!important;
-    left:max(8px,env(safe-area-inset-left))!important;
-    right:max(8px,env(safe-area-inset-right))!important;
-    height:0!important;
-    z-index:48!important;
+    position:fixed!important;
+    inset:0!important;
+    width:100dvw!important;
+    height:100dvh!important;
+    z-index:58!important;
     pointer-events:none!important;
   }
   .mobile-combo-slot {
     position:absolute;
-    top:0;
-    left:0;
+    top:calc(56px + max(6px,env(safe-area-inset-top)));
+    left:max(8px,env(safe-area-inset-left));
     display:flex;
     justify-content:flex-start;
     max-width:43%;
   }
   .mobile-effect-stack {
     position:absolute;
-    top:0;
-    right:0;
+    top:calc(56px + max(6px,env(safe-area-inset-top)));
+    right:max(8px,env(safe-area-inset-right));
     display:flex;
     flex-direction:column;
     align-items:flex-end;
     gap:4px;
     max-width:46%;
+  }
+  .mobile-effect-stack .floating-badge.heart {
+    position:fixed!important;
+    left:max(8px,env(safe-area-inset-left))!important;
+    right:auto!important;
+    bottom:max(42px,calc(env(safe-area-inset-bottom) + 38px))!important;
+    max-width:min(58vw,280px)!important;
   }
   .mobile-play-status .floating-badge {
     min-height:24px;
@@ -1144,8 +1150,9 @@ body { background:radial-gradient(circle at 15% 0%,rgba(73,199,164,.22),transpar
 }
 
 @media (orientation:landscape) and (max-height:390px) {
-  .phase-playing .mobile-play-status,
-  .phase-paused .mobile-play-status { top:calc(100% + 4px)!important; }
+  .mobile-combo-slot,
+  .mobile-effect-stack { top:calc(50px + max(4px,env(safe-area-inset-top)))!important; }
+  .mobile-effect-stack .floating-badge.heart { bottom:max(34px,calc(env(safe-area-inset-bottom) + 31px))!important; }
   .mobile-effect-stack { gap:3px; }
   .mobile-play-status .floating-badge { min-height:21px; padding:3px 6px; font-size:8.5px; }
   .phase-playing .play-toast,
