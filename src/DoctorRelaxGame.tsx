@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { applyMobileOrientation, currentMobileOrientation, type MobileOrientation } from "./mobileOrientation";
 
 type Phase = "idle" | "playing" | "paused" | "reveal" | "finished";
 type Hud = { phase: Phase; score: number; dropBudget: number; time: number; bonusPhase: boolean; bonusBank: number; bonusTotal: number; combo: number; roundBestCombo: number; best: number; roundNewBest: boolean; sound: boolean; music: boolean; zone: number; tier: number; unlockedTier: number; message: string; slowLeft: number; freezeLeft: number; magnetLeft: number; doubleLeft: number };
@@ -127,6 +128,19 @@ export default function DoctorRelaxGame() {
   const [showInstallHelp, setShowInstallHelp] = useState(false);
   const [updateRegistration, setUpdateRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [installed, setInstalled] = useState(false);
+  const [phoneOrientation, setPhoneOrientation] = useState<MobileOrientation>(() => currentMobileOrientation());
+  const [orientationNotice, setOrientationNotice] = useState("");
+
+  useEffect(() => {
+    const syncOrientation = () => setPhoneOrientation(currentMobileOrientation());
+    syncOrientation();
+    window.addEventListener("orientationchange", syncOrientation);
+    window.addEventListener("resize", syncOrientation);
+    return () => {
+      window.removeEventListener("orientationchange", syncOrientation);
+      window.removeEventListener("resize", syncOrientation);
+    };
+  }, []);
 
   useEffect(() => {
     const standalone = window.matchMedia("(display-mode: standalone)").matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
@@ -155,8 +169,19 @@ export default function DoctorRelaxGame() {
     try {
       if (!document.fullscreenElement && document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
     } catch {}
-    // Không khóa hướng màn hình: người chơi có thể giữ dọc hoặc xoay ngang tùy ý.
-    // Fullscreen vẫn được giữ nguyên để tận dụng tối đa diện tích trên điện thoại.
+  }
+
+  async function requestPhoneOrientation(target: MobileOrientation) {
+    const locked = await applyMobileOrientation(target);
+    const label = target === "portrait" ? "DỌC" : "NGANG";
+    setOrientationNotice(locked ? `✓ Đã chuyển ${label}` : `Đã chọn ${label} · nếu máy chưa tự xoay, hãy xoay điện thoại`);
+    window.setTimeout(() => setPhoneOrientation(currentMobileOrientation()), 250);
+    window.setTimeout(() => setOrientationNotice(""), 3200);
+  }
+
+  function togglePhoneOrientation() {
+    const target: MobileOrientation = phoneOrientation === "portrait" ? "landscape" : "portrait";
+    void requestPhoneOrientation(target);
   }
 
   async function installGame() {
@@ -1129,9 +1154,11 @@ export default function DoctorRelaxGame() {
             <button className="primary-button" onClick={() => { void enterImmersiveMode(); actionsRef.current.start(); }}>▶ Bắt đầu thư giãn</button>
             <div className="welcome-quick-actions">
               {!installed && <button type="button" className="secondary-button mobile-install-cta" onClick={installGame}>📲 Cài ứng dụng</button>}
+              <button type="button" className="secondary-button mobile-orientation-cta" onClick={togglePhoneOrientation}>{phoneOrientation === "portrait" ? "↔ Chuyển NGANG" : "↕ Chuyển DỌC"}</button>
               <button type="button" className="secondary-button mobile-fullscreen-cta" onClick={() => void enterImmersiveMode()}>⛶ Toàn màn hình</button>
               <button type="button" className="secondary-button mobile-help-cta" onClick={() => setShowHelpPanel(true)}>❔ Xem vật phẩm</button>
             </div>
+            {orientationNotice && <span className="orientation-notice" role="status" aria-live="polite">{orientationNotice}</span>}
             <span className="microcopy">GPP dọn màn · ☕ làm chậm · ❤️ cộng thời gian · 🌈 nhân đôi điểm</span>
           </div>}
           {hud.phase === "paused" && <div className="game-overlay compact-panel pause-panel-pro">
@@ -1203,9 +1230,6 @@ export default function DoctorRelaxGame() {
       </section>}
       {showMenuShell && <nav className="zone-list" aria-label="Các khu vực bệnh viện">{ZONES.map((name, index) => <span key={name} className={index === hud.zone ? "current" : ""}>{index + 1}. {name}</span>)}</nav>}
       {showMenuShell && <footer><span>Trường GPP</span><span>Chơi vui · Nghỉ ngắn · Không áp lực</span></footer>}
-      <div className="rotate-phone-overlay" aria-hidden="true">
-        <div className="rotate-phone-card"><span>📱↻</span><strong>Vui lòng xoay ngang điện thoại</strong><small>Game được tối ưu toàn màn hình ở chế độ ngang.</small></div>
-      </div>
       {showTierPicker && <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Chọn cấp bệnh viện">
         <div className="tier-picker-panel"><button className="modal-close" onClick={() => setShowTierPicker(false)} aria-label="Đóng">×</button><img src={`${ASSET_BASE}logo-icon.png`} alt="Biểu tượng GPP" /><h2>Chọn cấp đã mở</h2><p>Tiến độ được lưu tự động trên thiết bị này.</p><div className="tier-picker-grid">
           {HOSPITAL_TIERS.map((hospitalTier, index) => <button key={hospitalTier.name} disabled={index > hud.unlockedTier} onClick={() => { actionsRef.current.selectTier(index); setShowTierPicker(false); }}><span>{index > hud.unlockedTier ? "🔒" : hospitalTier.icon}</span><strong>{hospitalTier.name}</strong></button>)}
