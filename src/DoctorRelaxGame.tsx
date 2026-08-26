@@ -155,10 +155,8 @@ export default function DoctorRelaxGame() {
     try {
       if (!document.fullscreenElement && document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
     } catch {}
-    try {
-      const orientation = screen.orientation as ScreenOrientation & { lock?: (value: string) => Promise<void> };
-      await orientation.lock?.("landscape");
-    } catch {}
+    // Không khóa hướng màn hình: người chơi có thể giữ dọc hoặc xoay ngang tùy ý.
+    // Fullscreen vẫn được giữ nguyên để tận dụng tối đa diện tích trên điện thoại.
   }
 
   async function installGame() {
@@ -341,7 +339,9 @@ export default function DoctorRelaxGame() {
       if (mobileLayout) {
         // Luôn lấy tỷ lệ THỰC của vùng chơi sau khi xoay ngang / vào fullscreen.
         // Tránh lỗi canvas giữ kích thước từ lúc máy còn dọc nên chỉ vẽ ở 1 phần bên trái.
-        const liveAspect = clamp(cssW / cssH, 1.45, 3.65);
+        // Cho phép cả portrait và landscape dùng đúng tỷ lệ thật của vùng chơi.
+        // Mốc 0.56 vẫn đủ rộng cho vật phẩm lớn nhất mà không thay đổi luật/gameplay.
+        const liveAspect = clamp(cssW / cssH, 0.56, 3.65);
         HEIGHT = MOBILE_HEIGHT;
         WIDTH = Math.round(HEIGHT * liveAspect);
       } else {

@@ -1613,3 +1613,322 @@ body { background:radial-gradient(circle at 15% 0%,rgba(73,199,164,.22),transpar
     max-width:min(1080px,calc((100svh - 154px) * 24 / 13));
   }
 }
+
+/* === PA2.5-PORTRAIT · Mobile portrait support only ===
+   Giữ nguyên PC + mobile landscape; chỉ mở thêm chế độ dựng dọc. */
+@media (orientation:portrait) and (pointer:coarse) {
+  html,body,#root {
+    width:100%;
+    min-width:100%;
+    min-height:100%;
+    height:auto;
+    overflow-x:hidden;
+    overflow-y:auto;
+  }
+  body {
+    padding:0;
+    overscroll-behavior:none;
+    touch-action:manipulation;
+  }
+
+  /* Bản cũ bắt buộc xoay ngang; portrait mới cho phép chơi trực tiếp. */
+  .rotate-phone-overlay { display:none!important; }
+
+  /* Menu/kết quả vẫn dùng nội dung cũ, chỉ nới theo chiều dọc để không bị cắt. */
+  .site-shell.in-menu {
+    width:100%;
+    min-height:100dvh;
+    margin:0;
+    padding:0 0 max(14px,env(safe-area-inset-bottom));
+  }
+  .site-shell.in-menu .topbar {
+    margin:0;
+    padding:max(8px,env(safe-area-inset-top)) 10px 8px;
+  }
+  .site-shell.in-menu .game-card {
+    margin:0 8px;
+    padding:8px;
+    border-radius:18px;
+  }
+  .site-shell.in-menu .brand-logo-wrap {
+    width:52px;
+    height:52px;
+    flex-basis:52px;
+    border-radius:15px;
+  }
+  .site-shell.in-menu h1 { font-size:22px; }
+  .site-shell.in-menu .tagline { font-size:11px; }
+  .site-shell.in-menu .top-actions { gap:5px; }
+  .site-shell.in-menu .icon-button {
+    min-height:34px;
+    padding:0 8px;
+    border-radius:10px;
+    font-size:10px;
+  }
+  .site-shell.in-menu .menu-summary {
+    grid-template-columns:1fr;
+    gap:7px;
+    margin:0 0 7px;
+    padding:8px;
+    border-radius:14px;
+  }
+  .site-shell.in-menu .menu-summary-help { justify-items:stretch; min-width:0; }
+  .site-shell.in-menu .menu-summary-copy,
+  .site-shell.in-menu .assist-inline { font-size:10px; }
+  .site-shell.in-menu .progress-dot { width:34px; height:34px; border-radius:10px; font-size:15px; }
+  .site-shell.in-menu .canvas-wrap {
+    width:100%;
+    min-height:56dvh;
+    border-radius:14px;
+  }
+  .site-shell.in-menu .game-canvas {
+    width:100%;
+    height:100%;
+    min-height:56dvh;
+    aspect-ratio:auto;
+  }
+  .site-shell.in-menu .tips,
+  .site-shell.in-menu .zone-list,
+  .site-shell.in-menu footer { margin-left:8px; margin-right:8px; }
+
+  /* Gameplay portrait: HUD gọn phía trên, phần còn lại dành cho canvas. */
+  .site-shell.in-play,
+  .phase-reveal.site-shell {
+    position:fixed!important;
+    inset:0!important;
+    z-index:1;
+    width:100dvw!important;
+    height:100dvh!important;
+    min-width:0!important;
+    min-height:0!important;
+    max-width:none!important;
+    margin:0!important;
+    padding:0!important;
+    overflow:hidden!important;
+    background:#061d27;
+  }
+  .site-shell.in-play .topbar,
+  .phase-reveal .topbar { display:none!important; }
+
+  .site-shell.in-play .game-card,
+  .phase-reveal .game-card {
+    position:relative!important;
+    width:100dvw!important;
+    height:100dvh!important;
+    min-height:0!important;
+    margin:0!important;
+    padding:0!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:48px 3px minmax(0,1fr)!important;
+    gap:0!important;
+    overflow:hidden!important;
+    border:0!important;
+    border-radius:0!important;
+    background:#061d27!important;
+    box-shadow:none!important;
+    backdrop-filter:none!important;
+  }
+
+  .phase-playing .play-hud,
+  .phase-paused .play-hud {
+    grid-row:1!important;
+    position:relative!important;
+    z-index:30!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr) 42px!important;
+    grid-template-rows:42px!important;
+    align-items:center!important;
+    gap:5px!important;
+    width:100%!important;
+    height:48px!important;
+    margin:0!important;
+    padding:max(4px,env(safe-area-inset-top)) 6px 3px!important;
+    overflow:visible!important;
+    border:0!important;
+    border-radius:0!important;
+    background:linear-gradient(90deg,#052c39,#075765 52%,#052c39)!important;
+    box-shadow:0 4px 12px rgba(0,0,0,.18)!important;
+  }
+  .phase-playing .play-chip,
+  .phase-paused .play-chip {
+    min-width:0!important;
+    min-height:36px!important;
+    height:36px!important;
+    padding:4px 6px!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:4px!important;
+    border:1px solid rgba(255,255,255,.13)!important;
+    border-radius:10px!important;
+    color:#fff!important;
+    background:rgba(255,255,255,.065)!important;
+    box-shadow:none!important;
+  }
+  .phase-playing .play-chip span,
+  .phase-paused .play-chip span {
+    color:rgba(232,251,251,.72)!important;
+    font-size:8px!important;
+    line-height:1!important;
+    white-space:nowrap!important;
+  }
+  .phase-playing .play-chip strong,
+  .phase-paused .play-chip strong {
+    color:#fff!important;
+    font-size:16px!important;
+    line-height:1!important;
+    white-space:nowrap!important;
+  }
+  .phase-playing .play-pause-button,
+  .phase-paused .play-pause-button {
+    width:42px!important;
+    min-width:42px!important;
+    height:36px!important;
+    min-height:36px!important;
+    padding:0!important;
+    border-radius:10px!important;
+    font-size:18px!important;
+    box-shadow:none!important;
+  }
+
+  /* Thông báo/combo/hiệu ứng vẫn giữ đầy đủ nhưng nổi gọn trên vùng chơi. */
+  .phase-playing .play-floating-info,
+  .phase-paused .play-floating-info {
+    position:absolute!important;
+    z-index:34!important;
+    top:51px!important;
+    left:6px!important;
+    right:6px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    flex-wrap:wrap!important;
+    gap:3px!important;
+    width:auto!important;
+    min-height:0!important;
+    max-height:52px!important;
+    overflow:hidden!important;
+    pointer-events:none!important;
+  }
+  .phase-playing .floating-badge,
+  .phase-paused .floating-badge {
+    max-width:92vw!important;
+    min-height:22px!important;
+    height:22px!important;
+    padding:3px 7px!important;
+    overflow:hidden!important;
+    border:1px solid rgba(255,255,255,.10)!important;
+    border-radius:7px!important;
+    color:#efffff!important;
+    background:rgba(3,42,55,.60)!important;
+    box-shadow:none!important;
+    backdrop-filter:blur(5px)!important;
+    font-size:8px!important;
+    line-height:1!important;
+    white-space:nowrap!important;
+    text-overflow:ellipsis!important;
+  }
+
+  .phase-playing .time-track.active,
+  .phase-paused .time-track.active,
+  .phase-reveal .time-track {
+    grid-row:2!important;
+    width:100%!important;
+    height:3px!important;
+    margin:0!important;
+    border-radius:0!important;
+  }
+
+  .phase-playing .canvas-wrap,
+  .phase-paused .canvas-wrap,
+  .phase-reveal .canvas-wrap {
+    position:relative!important;
+    inset:auto!important;
+    grid-row:3!important;
+    width:100%!important;
+    height:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    max-width:none!important;
+    margin:0!important;
+    overflow:hidden!important;
+    border:0!important;
+    border-radius:0!important;
+    background:#061d27!important;
+    box-shadow:none!important;
+  }
+  .phase-playing .game-canvas,
+  .phase-paused .game-canvas,
+  .phase-reveal .game-canvas {
+    display:block!important;
+    width:100%!important;
+    height:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    max-width:none!important;
+    aspect-ratio:auto!important;
+    border-radius:0!important;
+    cursor:default!important;
+    touch-action:none!important;
+  }
+
+  /* Không dùng các control legacy; Pause trong HUD là điều khiển chính như bản ngang. */
+  .phase-playing .status-row,
+  .phase-paused .status-row,
+  .phase-reveal .status-row,
+  .phase-playing .play-toast,
+  .phase-paused .play-toast,
+  .phase-reveal .play-toast,
+  .phase-playing .mobile-game-controls,
+  .phase-paused .mobile-game-controls,
+  .phase-reveal .mobile-game-controls,
+  .desktop-event-dock { display:none!important; }
+
+  .phase-paused .game-overlay {
+    z-index:60!important;
+    inset:0!important;
+    overflow:auto!important;
+    padding:18px 12px max(18px,env(safe-area-inset-bottom))!important;
+    border-radius:0!important;
+  }
+  .phase-paused .pause-panel-pro h2 { font-size:28px!important; }
+  .phase-paused .pause-panel-pro p { font-size:13px!important; }
+  .phase-paused .pause-actions-grid {
+    width:min(92vw,420px)!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:7px!important;
+  }
+  .phase-paused .pause-actions-grid .primary-button,
+  .phase-paused .pause-actions-grid .secondary-button {
+    min-height:44px!important;
+    padding:9px 8px!important;
+    font-size:11px!important;
+  }
+
+  .phase-reveal .panorama-reveal-overlay {
+    padding:18px!important;
+  }
+
+  /* Các modal luôn cuộn được khi máy dựng dọc. */
+  .modal-backdrop { padding:max(10px,env(safe-area-inset-top)) 8px max(10px,env(safe-area-inset-bottom)); }
+  .help-panel,
+  .tier-picker-panel,
+  .install-panel {
+    width:min(96vw,560px)!important;
+    max-height:90dvh!important;
+    overflow:auto!important;
+  }
+}
+
+@media (orientation:portrait) and (pointer:coarse) and (max-width:380px) {
+  .phase-playing .play-hud,
+  .phase-paused .play-hud { grid-template-columns:minmax(0,1fr) minmax(0,1fr) 38px!important; gap:3px!important; }
+  .phase-playing .play-pause-button,
+  .phase-paused .play-pause-button { width:38px!important; min-width:38px!important; }
+  .phase-playing .play-chip span,
+  .phase-paused .play-chip span { font-size:7px!important; }
+  .phase-playing .play-chip strong,
+  .phase-paused .play-chip strong { font-size:14px!important; }
+}
+
