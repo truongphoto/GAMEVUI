@@ -2067,3 +2067,48 @@ body { background:radial-gradient(circle at 15% 0%,rgba(73,199,164,.22),transpar
   .phase-playing .play-chip strong,
   .phase-paused .play-chip strong { font-size:13px!important; }
 }
+
+/* === PA2.5.3 · Portrait HUD raised outside gameplay ===
+   Chỉ tăng nhẹ chiều cao thanh điều khiển trên điện thoại dựng dọc.
+   Canvas bắt đầu ở hàng riêng bên dưới nên HUD không che vùng chơi. */
+@media (orientation:portrait) and (pointer:coarse) {
+  .site-shell.in-play .game-card,
+  .phase-reveal .game-card {
+    grid-template-rows:50px 3px minmax(0,1fr)!important;
+  }
+  .phase-playing .play-hud,
+  .phase-paused .play-hud {
+    grid-template-rows:44px!important;
+    height:50px!important;
+    padding:max(4px,env(safe-area-inset-top)) 4px 3px!important;
+  }
+  .phase-playing .play-chip,
+  .phase-paused .play-chip,
+  .phase-playing .play-pause-button,
+  .phase-paused .play-pause-button,
+  .phase-playing .play-home-button,
+  .phase-paused .play-home-button {
+    min-height:36px!important;
+    height:36px!important;
+  }
+  .phase-playing .play-floating-info,
+  .phase-paused .play-floating-info {
+    top:53px!important;
+  }
+}
+
+@media (orientation:portrait) and (pointer:coarse) and (max-width:380px) {
+  .site-shell.in-play .game-card,
+  .phase-reveal .game-card {
+    grid-template-rows:48px 3px minmax(0,1fr)!important;
+  }
+  .phase-playing .play-hud,
+  .phase-paused .play-hud {
+    grid-template-rows:42px!important;
+    height:48px!important;
+  }
+  .phase-playing .play-floating-info,
+  .phase-paused .play-floating-info {
+    top:51px!important;
+  }
+}
