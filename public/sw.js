@@ -1,4 +1,4 @@
-const CACHE_NAME = "gpp-relax-pa2-5-mobile-orientation-choice-v2";
+const CACHE_NAME = "gpp-relax-pa2-5-2-portrait-controls-v3";
 const BASE = new URL("./", self.registration.scope);
 const CORE_FILES = [
   "./",

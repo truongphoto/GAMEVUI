@@ -9,7 +9,7 @@ type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Pro
 type FallingItem = {
   id: number;
   kind: "pill" | "logo" | "coffee" | "heart" | "specialHeart" | "ambulance" | "magnet" | "spaceship" | "rainbowLogo" | "badPill" | "virus" | "meteor" | "blackhole";
-  x: number; y: number; r: number; speed: number; drift: number;
+  x: number; y: number; r: number; baseR: number; speed: number; drift: number;
   points: number; color: string; shape: number; rotation: number; spin: number;
   hits?: number;
 };
@@ -260,6 +260,7 @@ export default function DoctorRelaxGame() {
     const playableAspect = clamp(landscapeViewportW / landscapeViewportH, MOBILE_WIDTH / MOBILE_HEIGHT, 3.15);
     let WIDTH = mobileLayout ? Math.round(MOBILE_HEIGHT * playableAspect) : DESKTOP_WIDTH;
     let HEIGHT = mobileLayout ? MOBILE_HEIGHT : DESKTOP_HEIGHT;
+    let portraitItemScale = mobileLayout && window.innerHeight > window.innerWidth ? 0.74 : 1;
 
     const mapImages = HOSPITAL_TIERS.map((hospitalTier) => {
       const image = new Image();
@@ -369,6 +370,7 @@ export default function DoctorRelaxGame() {
         const liveAspect = clamp(cssW / cssH, 0.56, 3.65);
         HEIGHT = MOBILE_HEIGHT;
         WIDTH = Math.round(HEIGHT * liveAspect);
+        portraitItemScale = cssH > cssW ? 0.74 : 1;
       } else {
         WIDTH = DESKTOP_WIDTH;
         HEIGHT = DESKTOP_HEIGHT;
@@ -377,18 +379,22 @@ export default function DoctorRelaxGame() {
       gameCanvas.width = Math.max(1, Math.round(WIDTH * dpr));
       gameCanvas.height = Math.max(1, Math.round(HEIGHT * dpr));
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      for (const item of items) item.x = clamp(item.x, item.r + 8, WIDTH - item.r - 8);
+      for (const item of items) {
+        item.r = item.baseR * portraitItemScale;
+        item.x = clamp(item.x, item.r + 8, WIDTH - item.r - 8);
+      }
     }
     function spawn(kind: FallingItem["kind"] = "pill", forcedPoints?: number) {
       const isLogo = kind === "logo" || kind === "rainbowLogo";
       const isPill = kind === "pill" || kind === "badPill";
-      const r = isLogo ? 50 : kind === "blackhole" ? 43 : kind === "meteor" ? 36 : kind === "specialHeart" ? 35 : isPill ? random(25, 31) : 31;
+      const baseR = isLogo ? 50 : kind === "blackhole" ? 43 : kind === "meteor" ? 36 : kind === "specialHeart" ? 35 : isPill ? random(25, 31) : 31;
+      const r = baseR * portraitItemScale;
       const bonusPoints = () => Math.ceil(random(4 + zone, 8 + zone * 1.6));
       const points = kind === "pill" ? clamp(forcedPoints ?? (bonusPhase ? bonusPoints() : 1), 1, 10) : 0;
       const sceneSpeed = SCENE_BALANCE[zone].speed;
       const pointSpeed = kind === "pill" ? .8 + (points - 1) * (1.2 / 9) : 1;
       const verticalSpeed = kind === "specialHeart" ? 370 : (isLogo ? 76 : kind === "blackhole" ? 54 : kind === "meteor" ? 112 : random(88, 108)) * sceneSpeed * pointSpeed;
-      items.push({ id: ++itemId, kind, x: random(r + 18, WIDTH - r - 18), y: -r - random(0, 70), r,
+      items.push({ id: ++itemId, kind, x: random(r + 18, WIDTH - r - 18), y: -r - random(0, 70), r, baseR,
         speed: verticalSpeed, drift: kind === "specialHeart" ? random(-80, 80) : kind === "meteor" ? random(-55, 55) : random(-16, 16), points,
         color: kind === "badPill" ? "#171c22" : pillPalette(points).shell, shape: Math.random() < 0.48 ? 0 : 1, rotation: random(-0.5, 0.5), spin: random(-0.25, 0.25), hits: kind === "blackhole" ? 0 : undefined });
     }
@@ -1135,7 +1141,8 @@ export default function DoctorRelaxGame() {
         {inActivePlay && <div className="play-hud" aria-label="Thông tin trong lúc chơi">
           <div className="play-chip score"><span>⭐ Điểm</span><strong>{hud.score}</strong></div>
           <div className={`play-chip timer ${hud.bonusPhase ? "bonus" : ""}`}><span>{hud.bonusPhase ? "❤️ Thưởng" : "⏱ Thời gian"}</span><strong>{hud.time}s</strong></div>
-          <button className="play-pause-button" onClick={() => actionsRef.current.pause()} aria-label={hud.phase === "paused" ? "Tiếp tục" : "Tạm dừng"}>{hud.phase === "paused" ? "▶" : "Ⅱ"}</button>
+          <button className="play-pause-button" onClick={() => actionsRef.current.pause()} aria-label={hud.phase === "paused" ? "Tiếp tục" : "Dừng trò chơi"}><span className="play-control-icon">{hud.phase === "paused" ? "▶" : "Ⅱ"}</span><span className="play-control-text">{hud.phase === "paused" ? "TIẾP" : "DỪNG"}</span></button>
+          <button className="play-home-button" onClick={() => actionsRef.current.goHome()} aria-label="Về menu chính"><span className="play-control-icon">⌂</span><span className="play-control-text">MENU</span></button>
           <div className="play-floating-info" aria-live="polite">
             {eventDockMessage && <div className="floating-badge event">{eventDockMessage}</div>}
             {hud.combo >= 5 && <div className="floating-badge combo">🔥 ×{hud.combo}</div>}

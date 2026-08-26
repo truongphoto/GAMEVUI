@@ -1960,3 +1960,110 @@ body { background:radial-gradient(circle at 15% 0%,rgba(73,199,164,.22),transpar
     text-align:center;
   }
 }
+
+
+/* === PA2.5.2 · Portrait compact items + full mobile controls === */
+.play-home-button { display:none; }
+.play-control-text { display:none; }
+
+@media (orientation:portrait) and (pointer:coarse) {
+  /* Thu gọn HUD để nội dung chính luôn đủ chỗ trên màn hình dọc. */
+  .site-shell.in-play .game-card,
+  .phase-reveal .game-card {
+    grid-template-rows:42px 3px minmax(0,1fr)!important;
+  }
+  .phase-playing .play-hud,
+  .phase-paused .play-hud {
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr) 48px 48px!important;
+    grid-template-rows:38px!important;
+    height:42px!important;
+    gap:3px!important;
+    padding:max(3px,env(safe-area-inset-top)) 4px 2px!important;
+  }
+  .phase-playing .play-chip,
+  .phase-paused .play-chip {
+    min-height:32px!important;
+    height:32px!important;
+    padding:3px 4px!important;
+    gap:3px!important;
+    border-radius:8px!important;
+  }
+  .phase-playing .play-chip span,
+  .phase-paused .play-chip span {
+    font-size:7px!important;
+  }
+  .phase-playing .play-chip strong,
+  .phase-paused .play-chip strong {
+    font-size:14px!important;
+  }
+  .phase-playing .play-pause-button,
+  .phase-paused .play-pause-button,
+  .phase-playing .play-home-button,
+  .phase-paused .play-home-button {
+    display:flex!important;
+    width:48px!important;
+    min-width:48px!important;
+    height:32px!important;
+    min-height:32px!important;
+    padding:2px!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:0!important;
+    border:1px solid rgba(255,255,255,.16)!important;
+    border-radius:8px!important;
+    color:#fff!important;
+    background:rgba(255,255,255,.085)!important;
+    box-shadow:none!important;
+    font-weight:900!important;
+  }
+  .phase-playing .play-home-button,
+  .phase-paused .play-home-button {
+    cursor:pointer;
+    background:rgba(255,255,255,.065)!important;
+  }
+  .phase-playing .play-control-icon,
+  .phase-paused .play-control-icon {
+    display:block!important;
+    font-size:13px!important;
+    line-height:12px!important;
+  }
+  .phase-playing .play-control-text,
+  .phase-paused .play-control-text {
+    display:block!important;
+    margin-top:1px!important;
+    font-size:6px!important;
+    line-height:7px!important;
+    letter-spacing:.02em!important;
+  }
+  .phase-playing .play-floating-info,
+  .phase-paused .play-floating-info {
+    top:45px!important;
+    max-height:44px!important;
+  }
+  .phase-playing .floating-badge,
+  .phase-paused .floating-badge {
+    min-height:19px!important;
+    height:19px!important;
+    padding:2px 6px!important;
+    font-size:7px!important;
+  }
+}
+
+@media (orientation:portrait) and (pointer:coarse) and (max-width:380px) {
+  .phase-playing .play-hud,
+  .phase-paused .play-hud {
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr) 43px 43px!important;
+  }
+  .phase-playing .play-pause-button,
+  .phase-paused .play-pause-button,
+  .phase-playing .play-home-button,
+  .phase-paused .play-home-button {
+    width:43px!important;
+    min-width:43px!important;
+  }
+  .phase-playing .play-chip span,
+  .phase-paused .play-chip span { font-size:6.5px!important; }
+  .phase-playing .play-chip strong,
+  .phase-paused .play-chip strong { font-size:13px!important; }
+}
